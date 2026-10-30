@@ -7,4 +7,5 @@ outputs/validation_detailed.csv
 __pycache__/
 *.jpg
 *.zip
+*.pkl
 .vercel

@@ -3,6 +3,7 @@ from PIL import Image
 from typing import Dict, Tuple, List, Optional, Any
 from pathlib import Path
 import json
+from thresholds import load_thresholds, get_flat_thresholds
 
 try:
     import torch
@@ -150,11 +151,22 @@ class DiagnosisAgent:
                 self.torch_model = None
                 self.have_weights = False
 
-    def _package_prediction(self, probs: np.ndarray) -> Dict[str, Any]:
+    def _package_prediction(
+        self,
+        probs: np.ndarray,
+        tta_disagreement: float = 0.0,
+        custom_thresholds: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
         codes = [IDX_TO_CODE[i] for i in range(7)]
         pred_idx = int(np.argmax(probs))
         pred_code = codes[pred_idx]
         confidence = float(probs[pred_idx])
+
+        # Active thresholds
+        th = get_flat_thresholds(custom_thresholds)
+        margin_min = th.get("margin_minimum", 0.15)
+        max_entropy = th.get("max_entropy", 1.75)
+        tta_thresh = th.get("tta_disagreement_threshold", 0.22)
 
         # Sort candidate probabilities
         sorted_indices = np.argsort(probs)[::-1]
@@ -167,9 +179,14 @@ class DiagnosisAgent:
         second_prob = float(probs[sorted_indices[1]])
         margin = round(confidence - second_prob, 4)
 
-        if margin >= 0.35:
+        # Shannon entropy of probability distribution (in bits, max log2(7) ≈ 2.81)
+        entropy = round(-float(np.sum(probs * np.log2(probs + 1e-8))), 4)
+
+        is_ambiguous = (margin < margin_min) or (entropy > max_entropy) or (tta_disagreement > tta_thresh)
+
+        if margin >= 0.35 and not is_ambiguous:
             certainty = "HIGH_CERTAINTY"
-        elif margin >= 0.15:
+        elif margin >= margin_min and not is_ambiguous:
             certainty = "MODERATE_CERTAINTY"
         else:
             certainty = "DIFFERENTIAL_AMBIGUITY"
@@ -193,6 +210,9 @@ class DiagnosisAgent:
             'predicted_idx': pred_idx,
             'confidence': round(confidence, 4),
             'margin_to_next': margin,
+            'entropy': entropy,
+            'tta_disagreement': round(float(tta_disagreement), 4),
+            'is_ambiguous': is_ambiguous,
             'diagnostic_certainty': certainty,
             'cumulative_malignancy_risk': cum_malig,
             'is_malignant': is_malignant,
@@ -200,14 +220,19 @@ class DiagnosisAgent:
             'all_probabilities_by_name': all_probs_name,
             'top_3': top_3,
             'clinical_description': CLINICAL_DESCRIPTIONS.get(pred_code, ""),
-            'summary': f"Pathology predicted as '{CODE_TO_NAME[pred_code]}' [{pred_code}] with {confidence*100:.1f}% confidence ({certainty}, margin: {margin:.2f})."
+            'summary': f"Pathology predicted as '{CODE_TO_NAME[pred_code]}' [{pred_code}] with {confidence*100:.1f}% confidence ({certainty}, margin: {margin:.2f}, entropy: {entropy:.2f})."
         }
 
-    def predict_numpy_fallback(self, pil_img: Image.Image) -> Dict[str, Any]:
+    def predict_numpy_fallback(self, pil_img: Image.Image, custom_thresholds: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """Learned feature statistical classifier fallback when PyTorch weights are unavailable."""
         img_rgb = pil_img.convert('RGB').resize((128, 128))
         arr = np.array(img_rgb, dtype=np.float32) / 255.0
         r, g, b = arr[:, :, 0], arr[:, :, 1], arr[:, :, 2]
+        
+        th = get_flat_thresholds(custom_thresholds)
+        temp = max(0.01, float(th.get("temperature", 1.0)))
+        biases = th.get("class_probability_bias", {})
+        bias_arr = np.array([biases.get(IDX_TO_CODE[i], 0.0) for i in range(7)], dtype=np.float32)
 
         if self.lightweight_weights is not None:
             try:
@@ -256,11 +281,12 @@ class DiagnosisAgent:
                 intercept = np.array(self.lightweight_weights['intercept'])
 
                 feats_scaled = (feats - scaler_mean) / (scaler_scale + 1e-6)
-                logits = np.dot(coef, feats_scaled) + intercept
+                raw_logits = np.dot(coef, feats_scaled) + intercept
+                scaled_logits = (raw_logits / temp) + bias_arr
                 
-                exp_l = np.exp(logits - np.max(logits))
+                exp_l = np.exp(scaled_logits - np.max(scaled_logits))
                 probs = exp_l / np.sum(exp_l)
-                return self._package_prediction(probs)
+                return self._package_prediction(probs, tta_disagreement=0.0, custom_thresholds=custom_thresholds)
             except Exception:
                 pass
 
@@ -282,12 +308,19 @@ class DiagnosisAgent:
         }
         codes = ['mel', 'nv', 'bcc', 'akiec', 'bkl', 'df', 'vasc']
         score_arr = np.array([raw_scores[c] for c in codes])
-        exp_s = np.exp(score_arr * 2.5)
+        scaled_scores = (score_arr * 2.5 / temp) + bias_arr
+        exp_s = np.exp(scaled_scores - np.max(scaled_scores))
         probs = exp_s / exp_s.sum()
-        return self._package_prediction(probs)
+        return self._package_prediction(probs, tta_disagreement=0.0, custom_thresholds=custom_thresholds)
 
-    def predict(self, image_input: Any) -> Dict[str, Any]:
-        """Executes diagnostic inference on image input."""
+    def predict(self, image_input: Any, custom_thresholds: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """Executes diagnostic inference on image input with TTA, temperature scaling, and class bias."""
+        th = get_flat_thresholds(custom_thresholds)
+        temp = max(0.01, float(th.get("temperature", 1.0)))
+        tta_enabled = bool(th.get("tta_enabled", True))
+        biases = th.get("class_probability_bias", {})
+        bias_arr = np.array([biases.get(IDX_TO_CODE[i], 0.0) for i in range(7)], dtype=np.float32)
+
         if isinstance(image_input, str):
             pil_img = Image.open(image_input).convert('RGB')
         elif isinstance(image_input, Image.Image):
@@ -300,23 +333,47 @@ class DiagnosisAgent:
 
         if HAVE_TORCH and self.torch_model is not None and self.have_weights:
             try:
-                if pil_img is not None:
-                    tensor = diagnosis_transforms(pil_img)
-                
                 with torch.no_grad():
-                    if len(tensor.shape) == 3:
-                        tensor = tensor.unsqueeze(0)
-                    tensor = tensor.to(DEVICE)
-                    logits = self.torch_model(tensor)
-                    probs = F.softmax(logits, dim=1).cpu().numpy()[0]
+                    if pil_img is not None and tta_enabled:
+                        # 4-view Test-Time Augmentation (Original, H-Flip, V-Flip, Rotate 180)
+                        v1 = pil_img
+                        v2 = pil_img.transpose(Image.FLIP_LEFT_RIGHT)
+                        v3 = pil_img.transpose(Image.FLIP_TOP_BOTTOM)
+                        v4 = pil_img.rotate(180)
+                        batch = torch.stack([diagnosis_transforms(v) for v in (v1, v2, v3, v4)]).to(DEVICE)
+                        raw_logits = self.torch_model(batch).cpu().numpy()  # (4, 7)
+                        
+                        scaled_logits = (raw_logits / temp) + bias_arr
+                        exp_l = np.exp(scaled_logits - np.max(scaled_logits, axis=1, keepdims=True))
+                        probs_views = exp_l / np.sum(exp_l, axis=1, keepdims=True)
 
-                return self._package_prediction(probs)
+                        mean_probs = np.mean(probs_views, axis=0)
+                        mean_probs = mean_probs / np.sum(mean_probs)
+                        tta_disagreement = float(np.max(np.std(probs_views, axis=0)))
+                        return self._package_prediction(mean_probs, tta_disagreement=tta_disagreement, custom_thresholds=custom_thresholds)
+
+                    elif pil_img is not None:
+                        tensor = diagnosis_transforms(pil_img).unsqueeze(0).to(DEVICE)
+                        raw_logits = self.torch_model(tensor).cpu().numpy()[0]
+                        scaled_logits = (raw_logits / temp) + bias_arr
+                        exp_l = np.exp(scaled_logits - np.max(scaled_logits))
+                        probs = exp_l / np.sum(exp_l)
+                        return self._package_prediction(probs, tta_disagreement=0.0, custom_thresholds=custom_thresholds)
+                    else:
+                        if len(tensor.shape) == 3:
+                            tensor = tensor.unsqueeze(0)
+                        tensor = tensor.to(DEVICE)
+                        raw_logits = self.torch_model(tensor).cpu().numpy()[0]
+                        scaled_logits = (raw_logits / temp) + bias_arr
+                        exp_l = np.exp(scaled_logits - np.max(scaled_logits))
+                        probs = exp_l / np.sum(exp_l)
+                        return self._package_prediction(probs, tta_disagreement=0.0, custom_thresholds=custom_thresholds)
             except Exception:
                 pass
 
         if pil_img is None:
             pil_img = Image.new('RGB', (224, 224), (180, 140, 120))
-        return self.predict_numpy_fallback(pil_img)
+        return self.predict_numpy_fallback(pil_img, custom_thresholds=custom_thresholds)
 
 def load_diagnosis_agent(model_path: str = 'models/diagnosis_agent.pt') -> DiagnosisAgent:
     return DiagnosisAgent(model_path=model_path)

@@ -3,6 +3,7 @@ from PIL import Image
 from typing import Dict, Any, Tuple, List, Optional
 import io
 import base64
+from thresholds import load_thresholds, get_flat_thresholds
 
 class LesionAnalysisAgent:
     """
@@ -22,10 +23,16 @@ class LesionAnalysisAgent:
       - Calibrated suspicion score (0.0 to 1.0) and reliability flags
     """
 
-    def __init__(self):
-        self.asymmetry_weight = 0.35
-        self.border_weight = 0.35
-        self.color_weight = 0.30
+    def __init__(
+        self,
+        asymmetry_weight: Optional[float] = None,
+        border_weight: Optional[float] = None,
+        color_weight: Optional[float] = None
+    ):
+        th = load_thresholds().get("lesion", {})
+        self.asymmetry_weight = asymmetry_weight if asymmetry_weight is not None else th.get("asymmetry_weight", 0.35)
+        self.border_weight = border_weight if border_weight is not None else th.get("border_weight", 0.35)
+        self.color_weight = color_weight if color_weight is not None else th.get("color_weight", 0.30)
 
     def segment_lesion(self, arr_rgb: np.ndarray) -> Tuple[np.ndarray, bool, Tuple[int, int]]:
         """
@@ -283,7 +290,7 @@ class LesionAnalysisAgent:
             "status": "STANDARD DIAMETER" if equiv_diam_px < 90 else "EXPANDED DIAMETER (>6mm Equiv)"
         }
 
-    def analyze(self, pil_img: Image.Image) -> Dict[str, Any]:
+    def analyze(self, pil_img: Image.Image, custom_thresholds: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
         Executes full ABCD dermoscopic analysis:
           1. Segments lesion & extracts edge boundary.
@@ -292,6 +299,15 @@ class LesionAnalysisAgent:
              TDS = 1.3*A + 0.1*B + 0.5*C + 0.5*D
           4. Generates visual edge map with overlaid centroid & asymmetry crosshairs.
         """
+        th = get_flat_thresholds(custom_thresholds)
+        tds_benign = th.get("tds_benign_upper", 4.75)
+        tds_indet = th.get("tds_indeterminate_upper", 5.45)
+        susp_benign = th.get("suspicion_benign_upper", 0.35)
+        susp_indet = th.get("suspicion_indeterminate_upper", 0.55)
+        w_a = th.get("asymmetry_weight", self.asymmetry_weight)
+        w_b = th.get("border_weight", self.border_weight)
+        w_c = th.get("color_weight", self.color_weight)
+
         img_resized = pil_img.convert('RGB').resize((224, 224))
         arr_rgb = np.array(img_resized, dtype=np.float32)
 
@@ -310,24 +326,19 @@ class LesionAnalysisAgent:
         d_scale = 1.0 + d_cont * 4.0
         tds_score = round(1.3 * a_pts + 0.1 * b_pts + 0.5 * c_pts + 0.5 * d_scale, 2)
 
-        if tds_score > 5.45:
+        # Continuous composite suspicion score [0.0, 1.0]
+        suspicion_score = round(w_a * a_cont + w_b * b_cont + w_c * c_cont, 3)
+        suspicion_score = float(np.clip(suspicion_score, 0.0, 1.0))
+
+        if tds_score > tds_indet or suspicion_score > susp_indet:
             tds_assessment = "HIGHLY_SUSPICIOUS (Melanoma Flag)"
             suspicion_level = "SUSPICIOUS"
-        elif tds_score >= 4.75:
+        elif tds_score >= tds_benign or suspicion_score >= susp_benign:
             tds_assessment = "INDETERMINATE / SUSPICIOUS"
             suspicion_level = "INDETERMINATE"
         else:
-            tds_assessment = "BENIGN (TDS < 4.75)"
+            tds_assessment = f"BENIGN (TDS < {tds_benign:.2f})"
             suspicion_level = "BENIGN_CUES"
-
-        # Continuous composite suspicion score [0.0, 1.0]
-        suspicion_score = round(
-            self.asymmetry_weight * a_cont +
-            self.border_weight * b_cont +
-            self.color_weight * c_cont,
-            3
-        )
-        suspicion_score = float(np.clip(suspicion_score, 0.0, 1.0))
 
         # 4. Reliability Flags
         reliability_flags = []

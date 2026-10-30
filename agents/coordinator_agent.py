@@ -1,4 +1,5 @@
-from typing import Dict, Any
+from typing import Dict, Any, Optional
+from thresholds import load_thresholds, get_flat_thresholds
 
 class CoordinatorAgent:
     """
@@ -25,8 +26,9 @@ class CoordinatorAgent:
       - Complete clinical rationale and audit log
     """
 
-    def __init__(self, auto_triage_confidence: float = 0.70):
-        self.auto_triage_confidence = auto_triage_confidence
+    def __init__(self, auto_triage_confidence: Optional[float] = None):
+        defaults = load_thresholds().get("diagnosis", {})
+        self.auto_triage_confidence = auto_triage_confidence if auto_triage_confidence is not None else defaults.get("auto_triage_confidence", 0.70)
         self.benign_codes = {'nv', 'bkl', 'df', 'vasc'}
         self.malignant_codes = {'mel', 'bcc', 'akiec'}
 
@@ -37,9 +39,11 @@ class CoordinatorAgent:
         a3_lesion: Dict[str, Any],
         a4_context: Dict[str, Any],
         a5_safety: Dict[str, Any],
-        custom_auto_conf: float = None
+        custom_auto_conf: float = None,
+        custom_thresholds: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
-        auto_conf_threshold = custom_auto_conf if custom_auto_conf is not None else self.auto_triage_confidence
+        th = get_flat_thresholds(custom_thresholds)
+        auto_conf_threshold = custom_auto_conf if custom_auto_conf is not None else th.get("auto_triage_confidence", self.auto_triage_confidence)
 
         # 1. Extract agent findings
         # A1 Quality
@@ -51,6 +55,7 @@ class CoordinatorAgent:
         pred_code = a2_diagnosis.get("predicted_code", "nv")
         pred_name = a2_diagnosis.get("predicted_class", "Melanocytic nevus")
         conf = a2_diagnosis.get("confidence", 0.70)
+        is_ambiguous = a2_diagnosis.get("is_ambiguous", False)
         a2_token = f"{pred_code} • {conf:.2f}"
 
         # A3 Lesion + A4 Context
@@ -59,9 +64,9 @@ class CoordinatorAgent:
         tds_score = a3_lesion.get("tds_score", 3.5)
         context_risk = a4_context.get("risk_indicator", "LOW")
 
-        if lesion_score >= 0.55 or tds_score >= 5.0 or context_risk == "HIGH":
+        if lesion_score >= th.get("suspicion_indeterminate_upper", 0.55) or tds_score >= 5.0 or context_risk == "HIGH":
             a3_a4_token = "SUSPICIOUS"
-        elif lesion_score >= 0.35 or context_risk == "MODERATE":
+        elif lesion_score >= th.get("suspicion_benign_upper", 0.35) or context_risk == "MODERATE":
             a3_a4_token = "INDETERMINATE"
         else:
             a3_a4_token = "BENIGN_CUES"
@@ -69,7 +74,7 @@ class CoordinatorAgent:
         # A5 Safety
         safety_flag = a5_safety.get("safety_flag", "PASS")
         safety_veto = a5_safety.get("veto_auto_triage", False)
-        a5_token = "SAFETY_VETO" if safety_flag == "SAFETY_VETO" else ("SAFETY_FLAG" if safety_flag == "SAFETY_FLAG" else "PASS")
+        a5_token = "SAFETY VETO" if safety_flag == "SAFETY_VETO" else ("SAFETY FLAG" if "FLAG" in safety_flag else "PASS")
 
         # --- Documented Decision Policy Matrix ---
         decision = "REFER"
@@ -111,12 +116,13 @@ class CoordinatorAgent:
             detailed_rationale.append(action_justification)
 
         # Branch 4: Diagnostic Uncertainty -> REFER
-        elif conf < auto_conf_threshold:
+        elif conf < auto_conf_threshold or is_ambiguous:
             decision = "REFER"
-            policy_rule = f"Policy Rule 4 (Diagnostic Uncertainty): Confidence {conf*100:.1f}% below threshold {auto_conf_threshold*100:.0f}%."
+            policy_rule = f"Policy Rule 4 (Diagnostic Uncertainty): Confidence {conf*100:.1f}% below threshold {auto_conf_threshold*100:.0f}% or differential ambiguity."
             action_justification = (
                 f"Primary candidate '{pred_name}' [{pred_code}] confidence ({conf*100:.1f}%) is below the "
-                f"autonomous triage threshold ({auto_conf_threshold*100:.0f}%). Clinical evaluation required to resolve differential ambiguity."
+                f"autonomous triage threshold ({auto_conf_threshold*100:.0f}%) or exhibits differential ambiguity. "
+                f"Clinical evaluation required to resolve diagnostic ambiguity."
             )
             detailed_rationale.append(action_justification)
 

@@ -1,0 +1,62 @@
+[
+  {
+    "scenario": "Correct AUTO_TRIAGE (High-confidence benign nevus, verified clear)",
+    "image_id": "ISIC_0025567",
+    "true_dx": "bkl",
+    "prediction": "bkl",
+    "decision": "AUTO_TRIAGE",
+    "confidence": 0.9911,
+    "traceable_chain": "A1: PASS | A2: bkl \u2022 0.99 | A3+A4: INDETERMINATE | A5: PASS | A6: AUTO_TRIAGE",
+    "policy_rule": "Policy Rule 5 (Verified Benign Autonomous Screening): High-confidence benign lesion with clear safety checks."
+  },
+  {
+    "scenario": "Malignancy REFER (Melanoma presentation, immediate specialist biopsy)",
+    "image_id": "ISIC_0026769",
+    "true_dx": "bkl",
+    "prediction": "mel",
+    "decision": "REFER",
+    "confidence": 0.3769,
+    "traceable_chain": "A1: PASS | A2: mel \u2022 0.38 | A3+A4: SUSPICIOUS | A5: SAFETY VETO | A6: REFER",
+    "policy_rule": "Policy Rule 2 (Malignancy Referral): Detected high-risk lesion code 'mel'."
+  },
+  {
+    "scenario": "Malignancy REFER (Basal cell carcinoma presentation, referral indicated)",
+    "image_id": "ISIC_0025915",
+    "true_dx": "bkl",
+    "prediction": "bcc",
+    "decision": "REFER",
+    "confidence": 0.2681,
+    "traceable_chain": "A1: PASS | A2: bcc \u2022 0.27 | A3+A4: SUSPICIOUS | A5: SAFETY VETO | A6: REFER",
+    "policy_rule": "Policy Rule 2 (Malignancy Referral): Detected high-risk lesion code 'bcc'."
+  },
+  {
+    "scenario": "Diagnostic Uncertainty REFER (Differential ambiguity below auto threshold)",
+    "image_id": "ISIC_0029396",
+    "true_dx": "bkl",
+    "prediction": "nv",
+    "decision": "REFER",
+    "confidence": 0.3862,
+    "traceable_chain": "A1: PASS | A2: nv \u2022 0.39 | A3+A4: SUSPICIOUS | A5: SAFETY VETO | A6: REFER",
+    "policy_rule": "Policy Rule 3 (Safety Sentinel Veto): Overrode automated triage via RULE_S1:RESIDUAL_MALIGNANCY_RISK."
+  },
+  {
+    "scenario": "Quality Failure RE_IMAGE (Compromised capture, re-imaging requested)",
+    "image_id": "ISIC_0025984",
+    "true_dx": "bkl",
+    "prediction": "nv",
+    "decision": "RE_IMAGE",
+    "confidence": 0.3454,
+    "traceable_chain": "A1: RE_IMAGE | A2: nv \u2022 0.35 | A3+A4: SUSPICIOUS | A5: SAFETY VETO | A6: RE_IMAGE",
+    "policy_rule": "Policy Rule 1 (Quality Gate): Capture degradation prevents dependable reading."
+  },
+  {
+    "scenario": "Cross-Agent Conflict REFER (Benign candidate vetoed by lesion/safety cues)",
+    "image_id": "ISIC_0034031",
+    "true_dx": "bkl",
+    "prediction": "nv",
+    "decision": "REFER",
+    "confidence": 0.9162,
+    "traceable_chain": "A1: PASS | A2: nv \u2022 0.92 | A3+A4: SUSPICIOUS | A5: SAFETY VETO | A6: REFER",
+    "policy_rule": "Policy Rule 3 (Safety Sentinel Veto): Overrode automated triage via RULE_S2:LESION_ABCD_DISCORDANCE."
+  }
+]

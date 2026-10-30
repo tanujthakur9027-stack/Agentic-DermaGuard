@@ -2,6 +2,7 @@ import os
 from PIL import Image
 from typing import Dict, Any, Optional
 
+from thresholds import load_thresholds, get_flat_thresholds
 from agents.image_quality_agent import quality_agent, QualityMetrics
 from agents.diagnosis_agent import diagnosis_agent, DiagnosisAgent
 from agents.lesion_analysis_agent import lesion_analysis_agent, LesionAnalysisAgent
@@ -25,13 +26,13 @@ class AgenticDermaGuard:
 
     def __init__(
         self,
-        quality_cutoff: float = 50.0,
-        blur_threshold: float = 40.0,
-        lighting_threshold: float = 40.0,
-        glare_threshold: float = 70.0,
-        occlusion_threshold: float = 50.0,
-        malignancy_threshold: float = 0.35,
-        auto_triage_confidence: float = 0.70
+        quality_cutoff: Optional[float] = None,
+        blur_threshold: Optional[float] = None,
+        lighting_threshold: Optional[float] = None,
+        glare_threshold: Optional[float] = None,
+        occlusion_threshold: Optional[float] = None,
+        malignancy_threshold: Optional[float] = None,
+        auto_triage_confidence: Optional[float] = None
     ):
         self.quality_agent = quality_agent
         self.diagnosis_agent = diagnosis_agent
@@ -40,19 +41,20 @@ class AgenticDermaGuard:
         self.safety_agent = safety_agent
         self.coordinator_agent = coordinator_agent
 
-        self.quality_cutoff = quality_cutoff
-        self.blur_threshold = blur_threshold
-        self.lighting_threshold = lighting_threshold
-        self.glare_threshold = glare_threshold
-        self.occlusion_threshold = occlusion_threshold
-        self.malignancy_threshold = malignancy_threshold
-        self.auto_triage_confidence = auto_triage_confidence
+        defaults = get_flat_thresholds()
+        self.quality_cutoff = quality_cutoff if quality_cutoff is not None else defaults["quality_cutoff"]
+        self.blur_threshold = blur_threshold if blur_threshold is not None else defaults["blur_threshold"]
+        self.lighting_threshold = lighting_threshold if lighting_threshold is not None else defaults["lighting_threshold"]
+        self.glare_threshold = glare_threshold if glare_threshold is not None else defaults["glare_threshold"]
+        self.occlusion_threshold = occlusion_threshold if occlusion_threshold is not None else defaults["occlusion_threshold"]
+        self.malignancy_threshold = malignancy_threshold if malignancy_threshold is not None else defaults["malignant_prob_threshold"]
+        self.auto_triage_confidence = auto_triage_confidence if auto_triage_confidence is not None else defaults["auto_triage_confidence"]
 
     def process_image(
         self,
         image_input: Any,
         patient_context: Optional[Dict[str, Any]] = None,
-        custom_thresholds: Optional[Dict[str, float]] = None
+        custom_thresholds: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """
         Executes full six-agent workflow on a single dermoscopic capture.
@@ -69,16 +71,7 @@ class AgenticDermaGuard:
         else:
             raise ValueError(f"Unsupported image type: {type(image_input)}")
 
-        th = custom_thresholds or {}
-        active_th = {
-            "blur_threshold": th.get("blur_threshold", self.blur_threshold),
-            "lighting_threshold": th.get("lighting_threshold", self.lighting_threshold),
-            "glare_threshold": th.get("glare_threshold", self.glare_threshold),
-            "occlusion_threshold": th.get("occlusion_threshold", self.occlusion_threshold),
-            "quality_cutoff": th.get("quality_cutoff", self.quality_cutoff),
-            "malignancy_threshold": th.get("malignancy_threshold", self.malignancy_threshold),
-            "auto_triage_confidence": th.get("auto_triage_confidence", self.auto_triage_confidence)
-        }
+        active_th = get_flat_thresholds(custom_thresholds)
 
         # --- AGENT 1: Image Quality Agent ---
         q_metrics = self.quality_agent.evaluate(pil_img, custom_thresholds=active_th)
@@ -96,17 +89,18 @@ class AgenticDermaGuard:
 
         # --- AGENT 2: Diagnosis Agent ---
         # NOTE: Track golden rule: Every image still requires a diagnosis prediction!
-        diag_output = self.diagnosis_agent.predict(pil_img)
+        diag_output = self.diagnosis_agent.predict(pil_img, custom_thresholds=active_th)
 
         # --- AGENT 3: Lesion Analysis Agent ---
-        a3_data = self.lesion_agent.analyze(pil_img)
+        a3_data = self.lesion_agent.analyze(pil_img, custom_thresholds=active_th)
 
         # --- AGENT 4: Reasoning / Context Agent ---
         ctx = patient_context or {}
         a4_data = self.context_agent.evaluate(
             age=ctx.get("age"),
             sex=ctx.get("sex"),
-            localization=ctx.get("localization")
+            localization=ctx.get("localization"),
+            custom_thresholds=active_th
         )
 
         # --- AGENT 5: Safety Agent ---
@@ -114,7 +108,8 @@ class AgenticDermaGuard:
             quality_data=a1_data,
             diagnosis_data=diag_output,
             lesion_data=a3_data,
-            context_data=a4_data
+            context_data=a4_data,
+            custom_thresholds=active_th
         )
 
         # --- AGENT 6: Coordinator Agent ---
@@ -124,7 +119,8 @@ class AgenticDermaGuard:
             a3_lesion=a3_data,
             a4_context=a4_data,
             a5_safety=a5_data,
-            custom_auto_conf=active_th["auto_triage_confidence"]
+            custom_auto_conf=active_th.get("auto_triage_confidence"),
+            custom_thresholds=active_th
         )
 
         return {

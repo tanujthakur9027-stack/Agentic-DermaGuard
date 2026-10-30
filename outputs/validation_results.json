@@ -1,180 +1,281 @@
 {
   "event": "JAYPEE AGENTIC AI INTERNATIONAL SUMMIT 2026",
   "track": "Track 2 | Healthcare",
-  "project": "Agentic DermaGuard (Six-Agent System)",
-  "stage": "Level 2 / Day 2 Multi-Agent Evaluation",
-  "evaluation_timestamp": "2026-10-30T22:36:29Z",
+  "project": "Agentic DermaGuard (Six-Agent Skin Lesion Screening & Triage)",
+  "context_mode": "no_context",
+  "evaluation_timestamp": "2026-10-30T23:38:04Z",
   "total_eval_samples": 1942,
+  "runtime_metrics": {
+    "total_elapsed_seconds": 264.85,
+    "latency_ms_per_image": 136.4
+  },
   "classification_metrics": {
-    "overall_accuracy": 0.6982,
-    "balanced_accuracy": 0.6482,
-    "macro_precision": 0.5004,
-    "macro_recall": 0.6482,
-    "macro_f1_score": 0.5516,
-    "weighted_f1_score": 0.7254,
+    "overall_accuracy": 0.7518,
+    "balanced_accuracy": 0.6497,
+    "macro_precision": 0.579,
+    "macro_recall": 0.6497,
+    "macro_f1_score": 0.598,
+    "weighted_f1_score": 0.7637,
     "class_metrics": {
       "Melanoma": {
         "code": "mel",
-        "precision": 0.3708,
-        "recall": 0.6636,
-        "f1_score": 0.4757,
+        "precision": 0.419,
+        "recall": 0.6168,
+        "f1_score": 0.4991,
         "support": 214
       },
       "Melanocytic nevus": {
         "code": "nv",
-        "precision": 0.9662,
-        "recall": 0.7458,
-        "f1_score": 0.8418,
+        "precision": 0.9209,
+        "recall": 0.8402,
+        "f1_score": 0.8787,
         "support": 1302
       },
       "Basal cell carcinoma": {
         "code": "bcc",
-        "precision": 0.3947,
-        "recall": 0.5941,
-        "f1_score": 0.4743,
+        "precision": 0.537,
+        "recall": 0.5743,
+        "f1_score": 0.555,
         "support": 101
       },
       "Actinic keratoses": {
         "code": "akiec",
-        "precision": 0.4078,
-        "recall": 0.6667,
-        "f1_score": 0.506,
+        "precision": 0.6875,
+        "recall": 0.5238,
+        "f1_score": 0.5946,
         "support": 63
       },
       "Benign keratosis": {
         "code": "bkl",
-        "precision": 0.4775,
-        "recall": 0.5,
-        "f1_score": 0.4885,
+        "precision": 0.5385,
+        "recall": 0.4953,
+        "f1_score": 0.516,
         "support": 212
       },
       "Dermatofibroma": {
         "code": "df",
-        "precision": 0.3143,
-        "recall": 0.4783,
-        "f1_score": 0.3793,
+        "precision": 0.2642,
+        "recall": 0.6087,
+        "f1_score": 0.3684,
         "support": 23
       },
       "Vascular lesion": {
         "code": "vasc",
-        "precision": 0.5714,
+        "precision": 0.6857,
         "recall": 0.8889,
-        "f1_score": 0.6957,
+        "f1_score": 0.7742,
         "support": 27
       }
     },
     "confusion_matrix": [
       [
-        142,
-        11,
-        12,
-        13,
-        34,
-        1,
-        1
-      ],
-      [
-        188,
-        971,
-        41,
-        16,
-        61,
-        11,
-        14
-      ],
-      [
-        8,
+        132,
+        36,
+        10,
         3,
-        60,
-        13,
-        12,
+        28,
         4,
         1
       ],
       [
-        2,
-        0,
-        7,
+        120,
+        1094,
+        24,
+        5,
         42,
+        10,
+        7
+      ],
+      [
+        14,
+        9,
+        58,
+        4,
+        10,
+        5,
+        1
+      ],
+      [
         8,
+        1,
         2,
+        33,
+        9,
+        8,
         2
       ],
       [
-        39,
-        16,
-        29,
-        16,
-        106,
-        6,
+        37,
+        41,
+        14,
+        3,
+        105,
+        12,
         0
       ],
       [
         4,
-        3,
+        4,
+        0,
+        0,
         1,
-        3,
-        1,
-        11,
+        14,
         0
       ],
       [
         0,
-        1,
-        2,
+        3,
+        0,
         0,
         0,
         0,
         24
       ]
+    ],
+    "top_class_confusions": [
+      {
+        "true_code": "nv",
+        "pred_code": "mel",
+        "true_name": "Melanocytic nevus",
+        "pred_name": "Melanoma",
+        "count": 120
+      },
+      {
+        "true_code": "nv",
+        "pred_code": "bkl",
+        "true_name": "Melanocytic nevus",
+        "pred_name": "Benign keratosis",
+        "count": 42
+      },
+      {
+        "true_code": "bkl",
+        "pred_code": "nv",
+        "true_name": "Benign keratosis",
+        "pred_name": "Melanocytic nevus",
+        "count": 41
+      },
+      {
+        "true_code": "bkl",
+        "pred_code": "mel",
+        "true_name": "Benign keratosis",
+        "pred_name": "Melanoma",
+        "count": 37
+      },
+      {
+        "true_code": "mel",
+        "pred_code": "nv",
+        "true_name": "Melanoma",
+        "pred_name": "Melanocytic nevus",
+        "count": 36
+      },
+      {
+        "true_code": "mel",
+        "pred_code": "bkl",
+        "true_name": "Melanoma",
+        "pred_name": "Benign keratosis",
+        "count": 28
+      },
+      {
+        "true_code": "nv",
+        "pred_code": "bcc",
+        "true_name": "Melanocytic nevus",
+        "pred_name": "Basal cell carcinoma",
+        "count": 24
+      },
+      {
+        "true_code": "bcc",
+        "pred_code": "mel",
+        "true_name": "Basal cell carcinoma",
+        "pred_name": "Melanoma",
+        "count": 14
+      }
     ]
   },
   "live_demo_reporting_counts": {
-    "correct_auto_triage": 134,
-    "incorrect_auto_triage": 9,
-    "number_of_refers": 1647,
-    "number_of_re_image": 152,
-    "triage_distribution": {
-      "REFER": 1647,
-      "RE_IMAGE": 152,
-      "AUTO_TRIAGE": 143
+    "correct_auto_triage": 130,
+    "incorrect_auto_triage": 4,
+    "auto_triage_precision_pct": 97.01,
+    "number_of_refers": 1696,
+    "number_of_re_image": 112,
+    "missed_malignancies": 2
+  },
+  "ablation_study": {
+    "stage_1_a1_a2": {
+      "correct_auto": 713,
+      "incorrect_auto": 16,
+      "refers": 1101,
+      "re_image": 112,
+      "missed_malig": 8
+    },
+    "stage_2_plus_a3": {
+      "correct_auto": 308,
+      "incorrect_auto": 4,
+      "refers": 1518,
+      "re_image": 112,
+      "missed_malig": 2
+    },
+    "stage_3_plus_a4": {
+      "correct_auto": 308,
+      "incorrect_auto": 4,
+      "refers": 1518,
+      "re_image": 112,
+      "missed_malig": 2
+    },
+    "stage_4_plus_a5": {
+      "correct_auto": 130,
+      "incorrect_auto": 4,
+      "refers": 1696,
+      "re_image": 112,
+      "missed_malig": 2
+    },
+    "stage_5_full_a6": {
+      "correct_auto": 130,
+      "incorrect_auto": 4,
+      "refers": 1696,
+      "re_image": 112,
+      "missed_malig": 2
     }
   },
-  "six_agent_summary": {
-    "A1_image_quality": {
-      "mean_quality": 76.49,
-      "mean_blur": 59.24,
-      "mean_lighting": 80.49,
-      "mean_glare": 88.03,
-      "mean_occlusion": 78.21,
-      "status_breakdown": {
-        "ACCEPTABLE": 1177,
-        "ACCEPTABLE_WITH_CAUTION": 613,
-        "RE_IMAGE": 152
-      }
-    },
-    "A3_lesion_analysis": {
-      "mean_suspicion_score": 0.64,
-      "suspicion_levels": {
-        "SUSPICIOUS": 962,
-        "BENIGN_CUES": 493,
-        "INDETERMINATE": 487
-      }
-    },
-    "A4_context_reasoning": {
-      "risk_levels": {
-        "MODERATE": 1058,
-        "HIGH": 551,
-        "LOW": 333
-      }
-    },
-    "A5_safety": {
-      "safety_flags": {
-        "SAFETY_VETO": 1738,
-        "PASS": 146,
-        "SAFETY_FLAG": 58
+  "cross_agent_interaction": {
+    "a2_benign_a3_suspicious": 1116,
+    "a2_benign_a4_high_risk": 0,
+    "a5_total_vetoes": 1787,
+    "a5_auto_triage_overrides": 595,
+    "a5_overrides_prevented_incorrect_auto": 12,
+    "a5_overrides_prevented_missed_malignancy": 6
+  },
+  "image_quality_summary": {
+    "status_counts": {
+      "PASS": 1824,
+      "RE_IMAGE": 112,
+      "ACCEPTABLE_WITH_CAUTION": 6
+    }
+  },
+  "synthetic_degradation_test": {
+    "clean_images_evaluated": 100,
+    "clean_false_positive_re_images": 4,
+    "clean_false_positive_rate_pct": 4.0,
+    "degradation_detection_rates": {
+      "blur": {
+        "tested": 100,
+        "detected": 97,
+        "detection_rate_pct": 97.0
       },
-      "vetoes_triggered": 1796
+      "glare": {
+        "tested": 100,
+        "detected": 100,
+        "detection_rate_pct": 100.0
+      },
+      "dark": {
+        "tested": 100,
+        "detected": 96,
+        "detection_rate_pct": 96.0
+      },
+      "occlusion": {
+        "tested": 100,
+        "detected": 2,
+        "detection_rate_pct": 2.0
+      }
     }
   }
 }

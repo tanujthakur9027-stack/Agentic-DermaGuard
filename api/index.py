@@ -206,18 +206,20 @@ class handler(BaseHTTPRequestHandler):
                         "triggered_criteria": q_res.triggered_criteria,
                         "edge_map_b64": q_res.edge_map_b64
                     }
-                    diag_output = diagnosis_agent.predict(pil_img)
-                    a3_data = lesion_analysis_agent.analyze(pil_img)
+                    diag_output = diagnosis_agent.predict(pil_img, custom_thresholds=thresholds)
+                    a3_data = lesion_analysis_agent.analyze(pil_img, custom_thresholds=thresholds)
                     a4_data = context_agent.evaluate(
                         age=patient_context.get("age"),
                         sex=patient_context.get("sex"),
-                        localization=patient_context.get("localization")
+                        localization=patient_context.get("localization"),
+                        custom_thresholds=thresholds
                     )
                     a5_data = safety_agent.review(
                         quality_data=a1_data,
                         diagnosis_data=diag_output,
                         lesion_data=a3_data,
-                        context_data=a4_data
+                        context_data=a4_data,
+                        custom_thresholds=thresholds
                     )
                     a6_data = coordinator_agent.coordinate(
                         a1_quality=a1_data,
@@ -225,7 +227,8 @@ class handler(BaseHTTPRequestHandler):
                         a3_lesion=a3_data,
                         a4_context=a4_data,
                         a5_safety=a5_data,
-                        custom_auto_conf=thresholds.get("auto_triage_confidence", 0.70)
+                        custom_auto_conf=thresholds.get("auto_triage_confidence"),
+                        custom_thresholds=thresholds
                     )
                     res = {
                         "final_decision": a6_data["decision"],

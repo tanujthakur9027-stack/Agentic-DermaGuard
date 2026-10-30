@@ -91,6 +91,42 @@ Agentic DermaGuard is an explainable, safety-first multi-agent clinical decision
 
 ---
 
+## 🎛️ Centralized Thresholds & Automatic Tuning
+
+All tunable operational parameters and clinical cutoffs are centralized in a single source of truth: `thresholds.json` (loaded dynamically with fallback defaults via `thresholds.py`).
+
+### 1. Parameter Specifications
+
+| Category | Parameter | Tuned Default | Description / Clinical Rationale |
+|---|---|---|---|
+| **Quality** | `blur_threshold`<br>`lighting_threshold`<br>`glare_threshold`<br>`occlusion_threshold`<br>`quality_cutoff`<br>`caution_overall_threshold` | 40.0<br>40.0<br>70.0<br>50.0<br>50.0<br>72.0 | Combined Laplacian + Tenengrad sharpness cutoff.<br>Histogram entropy lighting dynamic range.<br>Specular saturation sensor-clip penalty (min(R,G,B) >= 246).<br>Center vs. perimeter edge density.<br>Overall composite quality required for clinical screening.<br>Upper bound of cautionary evaluation band. |
+| **Diagnosis** | `auto_triage_confidence`<br>`margin_minimum`<br>`max_entropy`<br>`temperature`<br>`tta_enabled`<br>`tta_disagreement_threshold`<br>`class_probability_bias` | 0.80<br>0.10<br>1.65<br>1.14<br>true<br>0.22<br>mel: +0.30<br>nv: +0.75<br>bcc: -0.40<br>akiec: -0.85<br>df: +0.80 | Minimum confidence required for autonomous benign triage.<br>Top-1 vs top-2 candidate probability margin separation.<br>Shannon entropy threshold guarding differential ambiguity.<br>Probability calibration scaling factor.<br>4-view Test-Time Augmentation (Original, H-Flip, V-Flip, Rot180).<br>Max standard deviation across TTA views signaling morphology instability.<br>Coordinate ascent probability biases tuned for Macro-F1. |
+| **Malignancy** | `malignant_prob_threshold`<br>`mel_threshold` | 0.22<br>0.18 | Cumulative malignancy probability mass (p_mel + p_bcc + p_akiec).<br>Strict separate threshold for invasive melanoma suspicion. |
+| **Lesion ABCD** | `suspicion_cutoffs`<br>`tds_cutoffs`<br>`asymmetry_weight`<br>`border_weight`<br>`color_weight` | Benign: <0.35, Suspicious: >0.55<br>TDS <4.75 Benign, >5.45 Suspicious<br>0.35, 0.35, 0.30 | Continuous morphometry suspicion cutoffs.<br>Stolz Total Dermoscopy Score: 1.3*A + 0.1*B + 0.5*C + 0.5*D.<br>Clinical ABCD weighting factors. |
+| **Context** | `risk_cutoffs`<br>`age_cutoffs`<br>`neutral_missing_prior` | Low: <0.45, High: >=0.70<br>25, 40, 60, 75<br>0.20 | Epidemiological risk accumulation thresholds.<br>Pediatric, Adult, Senior, Geriatric incidence cohorts.<br>Neutral prior when demographic fields are omitted (hidden test mode). |
+| **Safety S1-S6** | `s1_enabled`..`s6_enabled`<br>`caution_confidence_required`<br>`high_context_risk_conf_req` | true (all enabled)<br>0.70<br>0.85 | Named sentinel rules enforcing patient safety and vetoing AUTO_TRIAGE.<br>Required confidence when quality is borderline.<br>Required confidence in high-risk elderly/sun-damaged demographics. |
+
+### 2. Automated Tuning Methodology (`tune_thresholds.py`)
+
+1. **50/50 Grouped Stratified Split on `lesion_id`:**
+   - Evaluated across validation set (1,942 images, 1,456 unique lesions).
+   - Set A (Tuning): 971 images across 728 lesions.
+   - Set B (Confirmation): 971 images across 728 lesions.
+   - **Lesion Overlap: EXACTLY 0 (Zero data leakage)**.
+2. **Logit Calibration & Temperature Scaling:**
+   - Optimized temperature $T = 1.14$ via NLL minimization.
+   - Set A Expected Calibration Error (ECE): **3.83% &rarr; 1.64%**.
+3. **Coordinate Ascent Per-Class Bias Tuning:**
+   - Maximized multi-class Macro-F1 across 7 disease codes.
+   - Set A Macro-F1: **0.5414 &rarr; 0.6140** (confirmed on Set B at 0.5937).
+4. **Clinical Operating Point Grid Search:**
+   - Evaluated 756 combinations of confidence, margins, and malignancy thresholds.
+   - **Tuning Set A Performance:** Precision = **96.0%**, Correct AUTO_TRIAGE = 72.
+   - **Confirmation Set B Performance:** Precision = **98.4%**, Correct AUTO_TRIAGE = 60, **Missed Malignancies = 0**.
+   - Output artifacts: `outputs/threshold_sweep.csv` and `outputs/threshold_tradeoff.png`.
+
+---
+
 ## 🌐 Vercel Web Deployment
 
 The application is deployed on Vercel as a full-stack serverless web application:

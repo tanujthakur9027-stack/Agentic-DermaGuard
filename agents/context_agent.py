@@ -1,5 +1,6 @@
 from typing import Dict, Any, List, Optional
 import math
+from thresholds import load_thresholds, get_flat_thresholds
 
 class ContextAgent:
     """
@@ -19,42 +20,50 @@ class ContextAgent:
     """
 
     def __init__(self):
-        # Chronic sun exposure sites (Head/Neck)
-        self.chronic_uv_sites = {'face', 'scalp', 'ear', 'neck'}
-        # Intermittent sunburn sites (Trunk/Torso)
-        self.intermittent_uv_sites = {'back', 'chest', 'abdomen', 'trunk'}
-        # Lower sun exposure / extremity sites
-        self.extremity_sites = {'upper extremity', 'lower extremity', 'hand', 'foot', 'genital', 'acral'}
+        th = load_thresholds().get("context", {})
+        self.chronic_uv_sites = set(th.get("chronic_uv_sites", ['face', 'scalp', 'ear', 'neck']))
+        self.intermittent_uv_sites = set(th.get("intermittent_uv_sites", ['back', 'chest', 'abdomen', 'trunk']))
+        self.extremity_sites = set(th.get("extremity_sites", ['upper extremity', 'lower extremity', 'hand', 'foot', 'genital', 'acral']))
+        self.age_cutoffs = th.get("age_cutoffs", {"pediatric": 25, "adult": 40, "senior": 60, "geriatric": 75})
+        self.high_risk_triad_bonus = th.get("high_risk_triad_bonus", 0.15)
+        self.neutral_missing_prior = th.get("neutral_missing_prior", 0.20)
 
     def evaluate(
         self,
         age: Optional[float] = None,
         sex: Optional[str] = None,
-        localization: Optional[str] = None
+        localization: Optional[str] = None,
+        custom_thresholds: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
+        th = get_flat_thresholds(custom_thresholds)
+        low_upper = th.get("risk_low_upper", 0.45)
+        mod_upper = th.get("risk_moderate_upper", 0.70)
+        triad_bonus = th.get("high_risk_triad_bonus", self.high_risk_triad_bonus)
+        neutral_prior = th.get("neutral_missing_prior", self.neutral_missing_prior)
+
         missing_flags = []
         evidence_points = []
         risk_score = 0.0
 
         # --- 1. Evaluate Age ---
         parsed_age = None
-        if age is None or (isinstance(age, float) and (math.isnan(age) or age <= 0)):
+        if age is None or (isinstance(age, float) and (math.isnan(age) or age <= 0)) or str(age).strip().lower() in {'unknown', 'nan', 'none', ''}:
             missing_flags.append("MISSING_AGE: Patient age is unspecified")
             evidence_points.append("Age unspecified; using population median baseline (neutral prior).")
             risk_score += 0.20
         else:
             try:
                 parsed_age = float(age)
-                if parsed_age >= 75:
+                if parsed_age >= self.age_cutoffs.get("geriatric", 75):
                     risk_score += 0.45
                     evidence_points.append(f"Geriatric cohort ({parsed_age:.0f} yrs): Marked cumulative solar elastosis; high incidence of lentigo maligna, BCC, and SCC.")
-                elif parsed_age >= 60:
+                elif parsed_age >= self.age_cutoffs.get("senior", 60):
                     risk_score += 0.35
                     evidence_points.append(f"Senior cohort ({parsed_age:.0f} yrs): Elevated baseline prior for non-melanocytic and melanocytic skin neoplasms.")
-                elif parsed_age >= 40:
+                elif parsed_age >= self.age_cutoffs.get("adult", 40):
                     risk_score += 0.20
                     evidence_points.append(f"Mature adult ({parsed_age:.0f} yrs): Moderate cumulative UV history; active surveillance recommended for atypical lesions.")
-                elif parsed_age >= 25:
+                elif parsed_age >= self.age_cutoffs.get("pediatric", 25):
                     risk_score += 0.10
                     evidence_points.append(f"Young adult ({parsed_age:.0f} yrs): Benign melanocytic nevi are prevalent; new or evolving lesions warrant monitoring.")
                 else:
@@ -101,19 +110,24 @@ class ContextAgent:
                 evidence_points.append(f"Standard anatomical site '{parsed_loc}': Lower comparative solar UV density relative to head and trunk.")
 
         # High-Risk Triad Interaction: Elderly male with head/neck/back lesion
-        if parsed_age and parsed_age >= 60 and parsed_sex in {'male', 'm'} and (parsed_loc in self.chronic_uv_sites or parsed_loc == 'back'):
-            risk_score += 0.15
+        if parsed_age and parsed_age >= self.age_cutoffs.get("senior", 60) and parsed_sex in {'male', 'm'} and (parsed_loc in self.chronic_uv_sites or parsed_loc == 'back'):
+            risk_score += triad_bonus
             evidence_points.append("CRITICAL RISK TRIAD: Older male presenting with head/neck/back lesion triggers heightened diagnostic vigilance.")
 
-        # Normalize risk score to [0.0, 1.0]
-        risk_score = round(min(1.0, max(0.05, risk_score)), 3)
-
-        if risk_score >= 0.70:
-            risk_indicator = "HIGH"
-        elif risk_score >= 0.45:
-            risk_indicator = "MODERATE"
-        else:
+        # Complete missing context scenario (all 3 demographic fields unprovided)
+        if len(missing_flags) >= 3:
+            risk_score = neutral_prior
             risk_indicator = "LOW"
+            evidence_points = ["Demographic metadata absent; evaluated with neutral prior baseline (0.20)."]
+        else:
+            # Normalize risk score to [0.0, 1.0]
+            risk_score = round(min(1.0, max(0.05, risk_score)), 3)
+            if risk_score >= mod_upper:
+                risk_indicator = "HIGH"
+            elif risk_score >= low_upper:
+                risk_indicator = "MODERATE"
+            else:
+                risk_indicator = "LOW"
 
         # Context completeness score
         completeness_pct = round((3 - len(missing_flags)) / 3.0 * 100.0, 1)

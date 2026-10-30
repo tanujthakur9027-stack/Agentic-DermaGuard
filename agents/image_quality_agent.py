@@ -4,6 +4,7 @@ from typing import Dict, Tuple, List, Any
 from dataclasses import dataclass
 import io
 import base64
+from thresholds import load_thresholds, get_flat_thresholds
 
 try:
     import cv2
@@ -40,17 +41,20 @@ class ImageQualityAgent:
 
     def __init__(
         self,
-        blur_threshold: float = 40.0,
-        lighting_threshold: float = 40.0,
-        glare_threshold: float = 70.0,
-        occlusion_threshold: float = 50.0,
-        quality_cutoff: float = 50.0
+        blur_threshold: Optional[float] = None,
+        lighting_threshold: Optional[float] = None,
+        glare_threshold: Optional[float] = None,
+        occlusion_threshold: Optional[float] = None,
+        quality_cutoff: Optional[float] = None,
+        caution_overall_threshold: Optional[float] = None
     ):
-        self.blur_threshold = blur_threshold
-        self.lighting_threshold = lighting_threshold
-        self.glare_threshold = glare_threshold
-        self.occlusion_threshold = occlusion_threshold
-        self.quality_cutoff = quality_cutoff
+        defaults = load_thresholds().get("quality", {})
+        self.blur_threshold = blur_threshold if blur_threshold is not None else defaults.get("blur_threshold", 40.0)
+        self.lighting_threshold = lighting_threshold if lighting_threshold is not None else defaults.get("lighting_threshold", 40.0)
+        self.glare_threshold = glare_threshold if glare_threshold is not None else defaults.get("glare_threshold", 70.0)
+        self.occlusion_threshold = occlusion_threshold if occlusion_threshold is not None else defaults.get("occlusion_threshold", 50.0)
+        self.quality_cutoff = quality_cutoff if quality_cutoff is not None else defaults.get("quality_cutoff", 50.0)
+        self.caution_overall_threshold = caution_overall_threshold if caution_overall_threshold is not None else defaults.get("caution_overall_threshold", 72.0)
 
     def assess_blur(self, arr_gray: np.ndarray) -> Tuple[float, str, np.ndarray]:
         """
@@ -184,6 +188,7 @@ class ImageQualityAgent:
         g_th = th.get("glare_threshold", self.glare_threshold)
         o_th = th.get("occlusion_threshold", self.occlusion_threshold)
         q_cutoff = th.get("quality_cutoff", self.quality_cutoff)
+        caution_overall = th.get("caution_overall_threshold", self.caution_overall_threshold)
 
         if isinstance(image_input, str):
             pil_img = Image.open(image_input).convert('RGB')
@@ -233,7 +238,7 @@ class ImageQualityAgent:
             status = "RE_IMAGE"
             if not reasoning:
                 reasoning.append(f"Composite quality below threshold ({overall_quality:.1f} < {q_cutoff:.1f}).")
-        elif overall_quality < 72.0 or len(triggers) == 1:
+        elif overall_quality < caution_overall or len(triggers) == 1:
             status = "ACCEPTABLE_WITH_CAUTION"
         else:
             status = "PASS"
