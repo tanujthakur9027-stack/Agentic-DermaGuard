@@ -71,10 +71,12 @@ class ImageQualityAgent:
         tenengrad = float(np.mean(grad_mag**2))
 
         # Composite sharpness metric: calibrated for dermoscopy
-        # In dermoscopy, sharp borders give lap_var >= 80, blurry images < 25
-        lap_component = min(100.0, (lap_var / 90.0) * 100.0)
-        grad_component = min(100.0, (tenengrad / 2500.0) * 100.0)
-        blur_score = round(0.6 * lap_component + 0.4 * grad_component, 1)
+        # In 224x224 scaled dermoscopy:
+        # Sharp microstructures give lap_var >= 55, tenengrad >= 800
+        # Severely blurred captures give lap_var < 5, tenengrad < 220
+        lap_component = min(100.0, (lap_var / 55.0) * 100.0)
+        grad_component = min(100.0, (tenengrad / 800.0) * 100.0)
+        blur_score = round(0.55 * lap_component + 0.45 * grad_component, 1)
 
         if blur_score >= 65:
             status = "SHARP"
@@ -108,20 +110,17 @@ class ImageQualityAgent:
     def assess_glare(self, arr_rgb: np.ndarray) -> Tuple[float, str]:
         """
         Detects specular glare / flash reflection voids.
-        Specular glare in dermoscopy is characterized by high brightness (V > 235)
-        accompanied by low color saturation (Sat < 0.18), distinguishing flash voids
-        from natural light skin tones.
+        Specular glare in dermoscopy occurs when all 3 color channels saturate (R, G, B >= 246),
+        causing pure sensor clip white voids that obliterate pigment networks.
+        Normal fair skin, in contrast, absorbs blue light (B < 220).
         """
-        v_channel = np.max(arr_rgb, axis=2)
         min_channel = np.min(arr_rgb, axis=2)
-        sat = (v_channel - min_channel) / (v_channel + 1e-5)
-
-        specular_mask = (v_channel > 235.0) & (sat < 0.18)
-        specular_ratio = float(np.sum(specular_mask) / v_channel.size)
+        specular_mask = min_channel >= 246.0
+        specular_ratio = float(np.sum(specular_mask) / specular_mask.size)
 
         # Calibrated clinical penalty:
-        # > 3.5% specular coverage severely blinds core diagnostic structures
-        glare_score = round(max(0.0, 100.0 - (specular_ratio * 900.0)), 1)
+        # 1.5% specular coverage drops score to 73 (caution); > 2% drops below 64 (defect & RE_IMAGE)
+        glare_score = round(max(0.0, 100.0 - (specular_ratio * 100.0 * 18.0)), 1)
 
         if glare_score >= 85:
             status = "NO_GLARE"

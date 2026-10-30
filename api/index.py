@@ -45,9 +45,10 @@ class handler(BaseHTTPRequestHandler):
         self.end_headers()
 
     def do_GET(self):
-        path = self.path.split("?")[0]
+        matched_path = self.headers.get("x-matched-path") or self.headers.get("x-vercel-matched-path") or self.path
+        path = matched_path.split("?")[0]
         
-        if path.endswith("/api/download-submission-sample"):
+        if "download" in path or path.endswith("submission-sample"):
             sample_csv_path = os.path.join(WORKSPACE_ROOT, "outputs", "final_submission_format_sample.csv")
             if os.path.exists(sample_csv_path):
                 self.send_response(200)
@@ -63,7 +64,7 @@ class handler(BaseHTTPRequestHandler):
                 self._send_cors_headers()
                 self.end_headers()
                 self.wfile.write(json.dumps({"error": "Submission sample CSV not found"}).encode("utf-8"))
-        elif path.endswith("/api/benchmark") or path == "/api/benchmark":
+        elif "benchmark" in path:
             try:
                 if os.path.exists(BENCHMARK_FILE):
                     with open(BENCHMARK_FILE, "r") as f:
@@ -100,7 +101,8 @@ class handler(BaseHTTPRequestHandler):
             }).encode("utf-8"))
 
     def do_POST(self):
-        path = self.path.split("?")[0]
+        matched_path = self.headers.get("x-matched-path") or self.headers.get("x-vercel-matched-path") or self.path
+        path = matched_path.split("?")[0]
         content_length = int(self.headers.get("Content-Length", 0))
         post_data = self.rfile.read(content_length)
         
@@ -109,7 +111,65 @@ class handler(BaseHTTPRequestHandler):
         except:
             body = {}
 
-        if path.endswith("/api/triage") or path == "/api/triage":
+        if ("submit" in path or "api_url" in body) and not body.get("image_base64"):
+            api_url = body.get("api_url")
+            team_name = body.get("team_name", "Team-DermaGuard")
+            team_token = body.get("team_token", "")
+            
+            if not api_url:
+                self.send_response(400)
+                self.send_header("Content-Type", "application/json")
+                self._send_cors_headers()
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": "Missing api_url"}).encode("utf-8"))
+                return
+
+            if os.path.exists(BENCHMARK_FILE):
+                with open(BENCHMARK_FILE, "r") as f:
+                    sum_data = json.load(f)
+            else:
+                sum_data = {}
+
+            payload = {
+                "team_name": team_name,
+                "track": "Track 2 | Healthcare",
+                "level": 2,
+                "project": "Agentic DermaGuard (Six-Agent System)",
+                "timestamp": sum_data.get("evaluation_timestamp"),
+                "total_validation_images": sum_data.get("total_eval_samples", 1942),
+                "baseline_metrics": sum_data.get("baseline_classification_metrics", {}),
+                "image_quality_summary": sum_data.get("image_quality_agent_outcomes", {}),
+                "triage_summary": sum_data.get("multi_agent_triage_decisions", {}),
+                "model_architecture": "Six-Agent Consensus: Image Quality + EfficientNet-B0 + ABCD Lesion + Context Reasoning + Safety Sentinel + Coordinator Policy"
+            }
+            
+            try:
+                req = urllib.request.Request(
+                    api_url,
+                    data=json.dumps(payload).encode("utf-8"),
+                    headers={
+                        "Content-Type": "application/json",
+                        "User-Agent": "AgenticDermaGuard-VercelClient/2.0",
+                        **({"Authorization": f"Bearer {team_token}", "X-API-KEY": team_token} if team_token else {})
+                    },
+                    method="POST"
+                )
+                with urllib.request.urlopen(req, timeout=20) as r:
+                    code = r.getcode()
+                    res_body = r.read().decode("utf-8")
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/json")
+                    self._send_cors_headers()
+                    self.end_headers()
+                    self.wfile.write(json.dumps({"status": "success", "code": code, "response": res_body}).encode("utf-8"))
+            except Exception as ex:
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json")
+                self._send_cors_headers()
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "error", "message": str(ex)}).encode("utf-8"))
+        else:
+            # Default to Six-Agent Triage Pipeline for all other POST calls
             image_b64 = body.get("image_base64", "")
             thresholds = body.get("thresholds", {})
             patient_context = body.get("context", {})
@@ -201,65 +261,3 @@ class handler(BaseHTTPRequestHandler):
                 self._send_cors_headers()
                 self.end_headers()
                 self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
-
-        elif path.endswith("/api/submit") or path == "/api/submit":
-            api_url = body.get("api_url")
-            team_name = body.get("team_name", "Team-DermaGuard")
-            team_token = body.get("team_token", "")
-            
-            if not api_url:
-                self.send_response(400)
-                self.send_header("Content-Type", "application/json")
-                self._send_cors_headers()
-                self.end_headers()
-                self.wfile.write(json.dumps({"error": "Missing api_url"}).encode("utf-8"))
-                return
-
-            if os.path.exists(BENCHMARK_FILE):
-                with open(BENCHMARK_FILE, "r") as f:
-                    sum_data = json.load(f)
-            else:
-                sum_data = {}
-
-            payload = {
-                "team_name": team_name,
-                "track": "Track 2 | Healthcare",
-                "level": 2,
-                "project": "Agentic DermaGuard (Six-Agent System)",
-                "timestamp": sum_data.get("evaluation_timestamp"),
-                "total_validation_images": sum_data.get("total_eval_samples", 1942),
-                "baseline_metrics": sum_data.get("baseline_classification_metrics", {}),
-                "image_quality_summary": sum_data.get("image_quality_agent_outcomes", {}),
-                "triage_summary": sum_data.get("multi_agent_triage_decisions", {}),
-                "model_architecture": "Six-Agent Consensus: Image Quality + EfficientNet-B0 + ABCD Lesion + Context Reasoning + Safety Sentinel + Coordinator Policy"
-            }
-            
-            try:
-                req = urllib.request.Request(
-                    api_url,
-                    data=json.dumps(payload).encode("utf-8"),
-                    headers={
-                        "Content-Type": "application/json",
-                        "User-Agent": "AgenticDermaGuard-VercelClient/2.0",
-                        **({"Authorization": f"Bearer {team_token}", "X-API-KEY": team_token} if team_token else {})
-                    },
-                    method="POST"
-                )
-                with urllib.request.urlopen(req, timeout=20) as r:
-                    code = r.getcode()
-                    res_body = r.read().decode("utf-8")
-                    self.send_response(200)
-                    self.send_header("Content-Type", "application/json")
-                    self._send_cors_headers()
-                    self.end_headers()
-                    self.wfile.write(json.dumps({"status": "success", "code": code, "response": res_body}).encode("utf-8"))
-            except Exception as ex:
-                self.send_response(500)
-                self.send_header("Content-Type", "application/json")
-                self._send_cors_headers()
-                self.end_headers()
-                self.wfile.write(json.dumps({"status": "error", "message": str(ex)}).encode("utf-8"))
-        else:
-            self.send_response(404)
-            self._send_cors_headers()
-            self.end_headers()
