@@ -1,0 +1,149 @@
+{
+  "event": "JAYPEE AGENTIC AI INTERNATIONAL SUMMIT 2026",
+  "track": "Track 2 | Healthcare",
+  "project": "Agentic DermaGuard: Multi-Agent Skin Lesion Screening & Triage",
+  "stage": "Day 1 / Level 1 Benchmark Submission",
+  "evaluation_timestamp": "2026-10-30T17:18:47Z",
+  "total_eval_samples": 1942,
+  "baseline_classification_metrics": {
+    "overall_accuracy": 0.6982,
+    "balanced_accuracy": 0.6482,
+    "macro_precision": 0.5004,
+    "macro_recall": 0.6482,
+    "macro_f1_score": 0.5516,
+    "weighted_f1_score": 0.7254,
+    "class_metrics": {
+      "Melanoma": {
+        "precision": 0.3708,
+        "recall": 0.6636,
+        "f1_score": 0.4757,
+        "support": 214
+      },
+      "Melanocytic nevus": {
+        "precision": 0.9662,
+        "recall": 0.7458,
+        "f1_score": 0.8418,
+        "support": 1302
+      },
+      "Basal cell carcinoma": {
+        "precision": 0.3947,
+        "recall": 0.5941,
+        "f1_score": 0.4743,
+        "support": 101
+      },
+      "Actinic keratoses": {
+        "precision": 0.4078,
+        "recall": 0.6667,
+        "f1_score": 0.506,
+        "support": 63
+      },
+      "Benign keratosis": {
+        "precision": 0.4775,
+        "recall": 0.5,
+        "f1_score": 0.4885,
+        "support": 212
+      },
+      "Dermatofibroma": {
+        "precision": 0.3143,
+        "recall": 0.4783,
+        "f1_score": 0.3793,
+        "support": 23
+      },
+      "Vascular lesion": {
+        "precision": 0.5714,
+        "recall": 0.8889,
+        "f1_score": 0.6957,
+        "support": 27
+      }
+    },
+    "confusion_matrix": [
+      [
+        142,
+        11,
+        12,
+        13,
+        34,
+        1,
+        1
+      ],
+      [
+        188,
+        971,
+        41,
+        16,
+        61,
+        11,
+        14
+      ],
+      [
+        8,
+        3,
+        60,
+        13,
+        12,
+        4,
+        1
+      ],
+      [
+        2,
+        0,
+        7,
+        42,
+        8,
+        2,
+        2
+      ],
+      [
+        39,
+        16,
+        29,
+        16,
+        106,
+        6,
+        0
+      ],
+      [
+        4,
+        3,
+        1,
+        3,
+        1,
+        11,
+        0
+      ],
+      [
+        0,
+        1,
+        2,
+        0,
+        0,
+        0,
+        24
+      ]
+    ]
+  },
+  "image_quality_agent_outcomes": {
+    "mean_overall_quality": 79.77,
+    "mean_blur_score": 89.61,
+    "mean_lighting_score": 76.62,
+    "mean_glare_score": 94.39,
+    "mean_occlusion_score": 58.47,
+    "quality_status_distribution": {
+      "ACCEPTABLE": 1742,
+      "ACCEPTABLE_WITH_CAUTION": 187,
+      "RE_IMAGE": 13
+    }
+  },
+  "multi_agent_triage_decisions": {
+    "distribution": {
+      "REFER": 1144,
+      "AUTO_TRIAGE": 785,
+      "RE_IMAGE": 13
+    },
+    "percentages": {
+      "REFER": 58.91,
+      "AUTO_TRIAGE": 40.42,
+      "RE_IMAGE": 0.67
+    }
+  }
+}

@@ -1,0 +1,12 @@
+# Ignore large local datasets and training artifacts for Vercel deployment
+Health/
+data/
+Cyber/
+models/*.pt
+logs/
+__pycache__/
+*.jpg
+*.jpeg
+*.png
+*.zip
+.git/

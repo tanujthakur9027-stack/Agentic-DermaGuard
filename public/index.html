@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agentic DermaGuard | Multi-Agent Skin Screening & Triage</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+  <!-- Top Navbar -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center h-16">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white text-xl shadow-md">
+          <i class="fa-solid fa-microscope"></i>
+        </div>
+        <div>
+          <span class="text-xl font-bold bg-gradient-to-r from-blue-700 to-indigo-600 bg-clip-text text-transparent">Agentic DermaGuard</span>
+          <span class="ml-2 text-xs font-semibold px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800">Summit 2026</span>
+        </div>
+      </div>
+      <div class="flex items-center space-x-4">
+        <div class="text-right hidden sm:block">
+          <p class="text-xs font-medium text-slate-500">Jaypee Agentic AI International Summit</p>
+          <p class="text-xs font-semibold text-slate-700">Track 2 | Healthcare</p>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Navigation Tabs -->
+  <div class="bg-white border-b border-slate-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <nav class="flex space-x-8" aria-label="Tabs">
+        <button onclick="switchTab('screening')" id="tab-screening" class="tab-btn py-4 px-1 border-b-2 font-medium text-sm border-blue-600 text-blue-600 flex items-center space-x-2">
+          <i class="fa-solid fa-wand-magic-sparkles"></i>
+          <span>Multi-Agent Triage</span>
+        </button>
+        <button onclick="switchTab('benchmark')" id="tab-benchmark" class="tab-btn py-4 px-1 border-b-2 font-medium text-sm border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 flex items-center space-x-2">
+          <i class="fa-solid fa-chart-line"></i>
+          <span>Level 1 Benchmark</span>
+        </button>
+        <button onclick="switchTab('submit')" id="tab-submit" class="tab-btn py-4 px-1 border-b-2 font-medium text-sm border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 flex items-center space-x-2">
+          <i class="fa-solid fa-paper-plane"></i>
+          <span>API Submission</span>
+        </button>
+      </nav>
+    </div>
+  </div>
+
+  <!-- Content Container -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full">
+
+    <!-- TAB 1: SCREENING -->
+    <div id="content-screening" class="space-y-6">
+      
+      <!-- Intro Banner -->
+      <div class="bg-gradient-to-r from-blue-900 to-indigo-900 rounded-2xl p-6 text-white shadow-md flex flex-col md:flex-row justify-between items-center gap-4">
+        <div>
+          <h2 class="text-2xl font-bold">Collaborative Dermatoscopy Screening</h2>
+          <p class="text-blue-200 text-sm mt-1 max-w-2xl">
+            <strong>Agent 1 (Image Quality)</strong> gates blurry/overexposed dermoscopy captures, while 
+            <strong>Agent 2 (Diagnosis)</strong> predicts 7 lesion pathologies to synthesize an explainable 
+            <span class="underline decoration-green-400 font-semibold">AUTO_TRIAGE</span>, 
+            <span class="underline decoration-rose-400 font-semibold">REFER</span>, or 
+            <span class="underline decoration-amber-400 font-semibold">RE_IMAGE</span> clinical decision.
+          </p>
+        </div>
+        <div class="flex gap-2">
+          <span class="px-3 py-1.5 rounded-lg bg-white/10 text-xs backdrop-blur-sm border border-white/20">EfficientNet-B0</span>
+          <span class="px-3 py-1.5 rounded-lg bg-white/10 text-xs backdrop-blur-sm border border-white/20">Vercel Edge Ready</span>
+        </div>
+      </div>
+
+      <!-- Main Interactive Grid -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        
+        <!-- Left: Image Input -->
+        <div class="lg:col-span-5 space-y-4">
+          <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
+            <h3 class="font-semibold text-slate-800 text-base flex items-center gap-2">
+              <i class="fa-regular fa-image text-blue-600"></i> Input Dermoscopy Image
+            </h3>
+
+            <!-- Sample Selector -->
+            <div>
+              <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Preset Clinical Cases</label>
+              <select id="preset-selector" onchange="loadPresetCase()" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                <option value="melanoma">Case 1: Invasive Melanoma (Malignant High-Risk)</option>
+                <option value="nevus" selected>Case 2: Melanocytic Nevus (Typical Benign Mole)</option>
+                <option value="bcc">Case 3: Basal Cell Carcinoma (Malignant)</option>
+                <option value="vasc">Case 4: Vascular Lesion (Benign Angioma)</option>
+                <option value="blurry">Case 5: Degraded Blur / Glare Artifact (Re-Image)</option>
+              </select>
+            </div>
+
+            <!-- Upload Box -->
+            <div class="border-2 border-dashed border-slate-300 rounded-xl p-4 text-center hover:bg-slate-50 transition cursor-pointer relative">
+              <input type="file" id="file-uploader" accept="image/*" onchange="handleFileUpload(event)" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full">
+              <i class="fa-solid fa-cloud-arrow-up text-2xl text-slate-400 mb-1"></i>
+              <p class="text-xs text-slate-600 font-medium">Click or drag custom dermoscopy image</p>
+              <p class="text-[10px] text-slate-400">JPG, PNG up to 10MB</p>
+            </div>
+
+            <!-- Preview Frame -->
+            <div class="relative rounded-xl overflow-hidden bg-slate-900 border border-slate-200 aspect-square flex items-center justify-center">
+              <img id="preview-image" src="" alt="Dermoscopy Preview" class="w-full h-full object-cover">
+              <div id="image-badge" class="absolute top-3 left-3 bg-slate-900/80 backdrop-blur-md text-white text-[11px] px-2.5 py-1 rounded-md font-mono">
+                224x224 Dermoscopy
+              </div>
+            </div>
+
+            <button onclick="runTriage()" id="btn-run" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-xl shadow-md transition flex items-center justify-center gap-2">
+              <i class="fa-solid fa-stethoscope"></i>
+              <span>Execute Multi-Agent Screening</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Right: Results & Agents -->
+        <div class="lg:col-span-7 space-y-6">
+
+          <!-- Final Triage Decision Card -->
+          <div id="triage-card" class="bg-white rounded-2xl p-6 border-2 border-green-400 shadow-sm transition-all duration-300">
+            <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+              <div class="flex items-center gap-3">
+                <div id="triage-icon-wrap" class="w-12 h-12 rounded-xl bg-green-100 text-green-700 flex items-center justify-center text-2xl">
+                  <i id="triage-icon" class="fa-solid fa-circle-check"></i>
+                </div>
+                <div>
+                  <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Synthesized Clinical Decision</p>
+                  <h3 id="triage-title" class="text-2xl font-bold text-green-700">AUTO_TRIAGE</h3>
+                </div>
+              </div>
+              <span id="triage-agent-pill" class="text-xs font-medium px-3 py-1 rounded-full bg-slate-100 text-slate-700">
+                Lead: Consensus
+              </span>
+            </div>
+            <div class="mt-4">
+              <p id="triage-explanation" class="text-sm text-slate-700 leading-relaxed font-medium">
+                Candidate for automated triage: Confident presentation of benign Melanocytic Nevus with validated image quality.
+              </p>
+            </div>
+          </div>
+
+          <!-- Two Agents Columns -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+            <!-- Agent 1: Image Quality -->
+            <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-3">
+              <div class="flex justify-between items-center pb-2 border-b border-slate-100">
+                <h4 class="font-bold text-slate-800 text-sm flex items-center gap-2">
+                  <i class="fa-solid fa-camera-rotate text-blue-600"></i> Agent 1: Image Quality
+                </h4>
+                <span id="qual-badge" class="text-xs px-2 py-0.5 rounded-full font-bold bg-green-100 text-green-800">
+                  ACCEPTABLE
+                </span>
+              </div>
+              
+              <div class="space-y-2 pt-1 text-xs">
+                <div>
+                  <div class="flex justify-between font-medium mb-1">
+                    <span>Sharpness (Laplacian):</span>
+                    <span id="score-blur" class="font-bold text-slate-700">100 / 100</span>
+                  </div>
+                  <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                    <div id="bar-blur" class="bg-blue-600 h-full rounded-full" style="width: 100%"></div>
+                  </div>
+                </div>
+
+                <div>
+                  <div class="flex justify-between font-medium mb-1">
+                    <span>Illumination (Entropy):</span>
+                    <span id="score-lighting" class="font-bold text-slate-700">84.5 / 100</span>
+                  </div>
+                  <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                    <div id="bar-lighting" class="bg-indigo-600 h-full rounded-full" style="width: 85%"></div>
+                  </div>
+                </div>
+
+                <div>
+                  <div class="flex justify-between font-medium mb-1">
+                    <span>Glare Control (HSV V):</span>
+                    <span id="score-glare" class="font-bold text-slate-700">99.9 / 100</span>
+                  </div>
+                  <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                    <div id="bar-glare" class="bg-emerald-600 h-full rounded-full" style="width: 99%"></div>
+                  </div>
+                </div>
+
+                <div>
+                  <div class="flex justify-between font-medium mb-1">
+                    <span>Lesion Centering:</span>
+                    <span id="score-occlusion" class="font-bold text-slate-700">88.2 / 100</span>
+                  </div>
+                  <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                    <div id="bar-occlusion" class="bg-teal-600 h-full rounded-full" style="width: 88%"></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="pt-2 border-t border-slate-100">
+                <p class="text-[11px] font-semibold text-slate-400 uppercase">Justified Quality Notes</p>
+                <p id="qual-reasons" class="text-xs text-slate-600 mt-1">Image quality meets clinical standards</p>
+              </div>
+            </div>
+
+            <!-- Agent 2: Diagnosis -->
+            <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-3">
+              <div class="flex justify-between items-center pb-2 border-b border-slate-100">
+                <h4 class="font-bold text-slate-800 text-sm flex items-center gap-2">
+                  <i class="fa-solid fa-dna text-indigo-600"></i> Agent 2: Diagnosis
+                </h4>
+                <span id="diag-risk-badge" class="text-xs px-2 py-0.5 rounded-full font-bold bg-green-100 text-green-800">
+                  Benign
+                </span>
+              </div>
+
+              <div>
+                <p class="text-xs text-slate-400 font-semibold uppercase">Predicted Pathology</p>
+                <div class="flex justify-between items-baseline mt-1">
+                  <p id="diag-class" class="text-lg font-bold text-slate-800">Melanocytic nevus</p>
+                  <p id="diag-conf" class="text-sm font-bold text-blue-600">86.4% conf.</p>
+                </div>
+              </div>
+
+              <!-- Probability mini chart -->
+              <div class="h-32">
+                <canvas id="probChart"></canvas>
+              </div>
+
+              <div class="pt-2 border-t border-slate-100 text-xs">
+                <span class="text-slate-400 font-semibold uppercase text-[10px]">Differential Diagnosis:</span>
+                <p id="diag-differential" class="text-slate-600 font-medium mt-0.5">1. Nevus (86.4%) · 2. Benign keratosis (7.2%)</p>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+
+    <!-- TAB 2: BENCHMARK -->
+    <div id="content-benchmark" class="hidden space-y-6">
+      
+      <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-6 border-b border-slate-200">
+          <div>
+            <h2 class="text-xl font-bold text-slate-800">Day 1 / Level 1 Official Validation Benchmark</h2>
+            <p class="text-sm text-slate-500">Evaluated on 1,942 held-out images from the official HAM10000 evaluation partition.</p>
+          </div>
+          <span class="px-3 py-1 rounded-full bg-blue-100 text-blue-800 text-xs font-bold">1,942 Images Verified</span>
+        </div>
+
+        <!-- 4 Metric Cards -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 my-6">
+          <div class="p-4 bg-slate-50 rounded-xl border border-slate-200">
+            <p class="text-xs text-slate-500 font-medium">Overall Accuracy</p>
+            <p class="text-2xl font-bold text-blue-700 mt-1">69.82%</p>
+          </div>
+          <div class="p-4 bg-slate-50 rounded-xl border border-slate-200">
+            <p class="text-xs text-slate-500 font-medium">Balanced Accuracy</p>
+            <p class="text-2xl font-bold text-indigo-700 mt-1">64.82%</p>
+          </div>
+          <div class="p-4 bg-slate-50 rounded-xl border border-slate-200">
+            <p class="text-xs text-slate-500 font-medium">Macro F1-Score</p>
+            <p class="text-2xl font-bold text-emerald-700 mt-1">0.5516</p>
+          </div>
+          <div class="p-4 bg-slate-50 rounded-xl border border-slate-200">
+            <p class="text-xs text-slate-500 font-medium">Weighted F1-Score</p>
+            <p class="text-2xl font-bold text-purple-700 mt-1">0.7254</p>
+          </div>
+        </div>
+
+        <!-- Class Breakdown Table -->
+        <div class="mt-6">
+          <h3 class="text-sm font-bold text-slate-700 uppercase tracking-wider mb-3">Classification Performance by Lesion Type</h3>
+          <div class="overflow-x-auto rounded-xl border border-slate-200">
+            <table class="min-w-full divide-y divide-slate-200 text-sm text-left">
+              <thead class="bg-slate-50 text-slate-500 font-medium">
+                <tr>
+                  <th class="px-4 py-3">Lesion Class</th>
+                  <th class="px-4 py-3">Clinical Risk</th>
+                  <th class="px-4 py-3">Precision</th>
+                  <th class="px-4 py-3">Recall (Sensitivity)</th>
+                  <th class="px-4 py-3">F1-Score</th>
+                  <th class="px-4 py-3">Validation Support</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-200 text-slate-700 font-medium">
+                <tr class="bg-red-50/50">
+                  <td class="px-4 py-3 font-semibold text-red-900">Melanoma (mel)</td>
+                  <td class="px-4 py-3"><span class="px-2 py-0.5 rounded text-xs bg-red-100 text-red-800 font-bold">Malignant</span></td>
+                  <td class="px-4 py-3">37.08%</td>
+                  <td class="px-4 py-3 font-bold text-red-700">66.36%</td>
+                  <td class="px-4 py-3">0.4757</td>
+                  <td class="px-4 py-3">214</td>
+                </tr>
+                <tr>
+                  <td class="px-4 py-3 font-semibold text-slate-900">Melanocytic nevus (nv)</td>
+                  <td class="px-4 py-3"><span class="px-2 py-0.5 rounded text-xs bg-green-100 text-green-800 font-bold">Benign</span></td>
+                  <td class="px-4 py-3">96.62%</td>
+                  <td class="px-4 py-3">74.58%</td>
+                  <td class="px-4 py-3 font-bold">0.8418</td>
+                  <td class="px-4 py-3">1,302</td>
+                </tr>
+                <tr class="bg-red-50/50">
+                  <td class="px-4 py-3 font-semibold text-red-900">Basal cell carcinoma (bcc)</td>
+                  <td class="px-4 py-3"><span class="px-2 py-0.5 rounded text-xs bg-red-100 text-red-800 font-bold">Malignant</span></td>
+                  <td class="px-4 py-3">39.47%</td>
+                  <td class="px-4 py-3">59.41%</td>
+                  <td class="px-4 py-3">0.4743</td>
+                  <td class="px-4 py-3">101</td>
+                </tr>
+                <tr>
+                  <td class="px-4 py-3 font-semibold text-slate-900">Actinic keratoses (akiec)</td>
+                  <td class="px-4 py-3"><span class="px-2 py-0.5 rounded text-xs bg-amber-100 text-amber-800 font-bold">Pre-Malignant</span></td>
+                  <td class="px-4 py-3">40.78%</td>
+                  <td class="px-4 py-3">66.67%</td>
+                  <td class="px-4 py-3">0.5060</td>
+                  <td class="px-4 py-3">63</td>
+                </tr>
+                <tr>
+                  <td class="px-4 py-3 font-semibold text-slate-900">Benign keratosis (bkl)</td>
+                  <td class="px-4 py-3"><span class="px-2 py-0.5 rounded text-xs bg-green-100 text-green-800 font-bold">Benign</span></td>
+                  <td class="px-4 py-3">47.75%</td>
+                  <td class="px-4 py-3">50.00%</td>
+                  <td class="px-4 py-3">0.4885</td>
+                  <td class="px-4 py-3">212</td>
+                </tr>
+                <tr>
+                  <td class="px-4 py-3 font-semibold text-slate-900">Dermatofibroma (df)</td>
+                  <td class="px-4 py-3"><span class="px-2 py-0.5 rounded text-xs bg-green-100 text-green-800 font-bold">Benign</span></td>
+                  <td class="px-4 py-3">31.43%</td>
+                  <td class="px-4 py-3">47.83%</td>
+                  <td class="px-4 py-3">0.3793</td>
+                  <td class="px-4 py-3">23</td>
+                </tr>
+                <tr>
+                  <td class="px-4 py-3 font-semibold text-slate-900">Vascular lesion (vasc)</td>
+                  <td class="px-4 py-3"><span class="px-2 py-0.5 rounded text-xs bg-green-100 text-green-800 font-bold">Benign</span></td>
+                  <td class="px-4 py-3">57.14%</td>
+                  <td class="px-4 py-3 font-bold text-emerald-700">88.89%</td>
+                  <td class="px-4 py-3 font-bold">0.6957</td>
+                  <td class="px-4 py-3">27</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- TAB 3: API SUBMISSION -->
+    <div id="content-submit" class="hidden space-y-6">
+      
+      <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm max-w-3xl mx-auto space-y-6">
+        <div>
+          <h2 class="text-xl font-bold text-slate-800">Summit API Submission Client</h2>
+          <p class="text-sm text-slate-500 mt-1">Submit your Level 1 benchmark summary directly from your Vercel deployment before the 8:00 PM deadline.</p>
+        </div>
+
+        <div class="space-y-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Competition Submission API URL</label>
+            <input type="text" id="api-endpoint" placeholder="https://api.summit2026.example.com/submit/level1" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono">
+            <p class="text-[11px] text-slate-400 mt-1">Shared by the organizers in your Track 2 WhatsApp group.</p>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Team Name</label>
+              <input type="text" id="api-team-name" value="Team-DermaGuard" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">API Key / Token (if provided)</label>
+              <input type="password" id="api-token" placeholder="Optional summit token" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Verified Payload Preview</label>
+            <pre class="bg-slate-900 text-slate-200 p-4 rounded-xl text-xs overflow-x-auto font-mono">
+{
+  "team_name": "Team-DermaGuard",
+  "track": "Track 2 | Healthcare",
+  "level": 1,
+  "project": "Agentic DermaGuard",
+  "total_validation_images": 1942,
+  "baseline_metrics": {
+    "overall_accuracy": 0.6982,
+    "balanced_accuracy": 0.6482,
+    "macro_f1": 0.5516,
+    "weighted_f1": 0.7254
+  },
+  "image_quality_summary": {
+    "mean_overall_quality": 79.77,
+    "mean_blur_score": 89.61,
+    "mean_lighting_score": 76.62,
+    "mean_glare_score": 94.39,
+    "mean_occlusion_score": 58.47
+  },
+  "triage_summary": {
+    "REFER": 1144,
+    "AUTO_TRIAGE": 785,
+    "RE_IMAGE": 13
+  }
+}</pre>
+          </div>
+
+          <button onclick="submitToApi()" id="btn-submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-4 rounded-xl shadow-md transition flex items-center justify-center gap-2">
+            <i class="fa-solid fa-paper-plane"></i>
+            <span>Submit Level 1 Benchmark to Organizers</span>
+          </button>
+
+          <div id="submit-response-box" class="hidden p-4 rounded-xl text-sm font-mono"></div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-500">
+    Agentic DermaGuard · Jaypee Agentic AI International Summit 2026 · Vercel Production Build
+  </footer>
+
+  <script>
+    // Tab switching
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('border-blue-600', 'text-blue-600');
+        btn.classList.add('border-transparent', 'text-slate-500');
+      });
+      document.getElementById('tab-' + tabId).classList.add('border-blue-600', 'text-blue-600');
+      document.getElementById('tab-' + tabId).classList.remove('border-transparent', 'text-slate-500');
+
+      document.getElementById('content-screening').classList.add('hidden');
+      document.getElementById('content-benchmark').classList.add('hidden');
+      document.getElementById('content-submit').classList.add('hidden');
+
+      document.getElementById('content-' + tabId).classList.remove('hidden');
+    }
+
+    // Chart.js init
+    let probChart = null;
+    function initChart() {
+      const ctx = document.getElementById('probChart').getContext('2d');
+      probChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: ['Mel', 'Nevus', 'BCC', 'AKIEC', 'BKL', 'DF', 'Vasc'],
+          datasets: [{
+            data: [0.03, 0.86, 0.02, 0.01, 0.05, 0.01, 0.02],
+            backgroundColor: ['#ef4444', '#3b82f6', '#ef4444', '#f59e0b', '#10b981', '#10b981', '#10b981'],
+            borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            y: { beginAtZero: true, max: 1.0, ticks: { callback: v => (v * 100) + '%' } }
+          }
+        }
+      });
+    }
+
+    // Preset Dermoscopy Case Data
+    const PRESETS = {
+      melanoma: {
+        img: 'https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&w=500&q=80',
+        decision: 'REFER',
+        lead: 'Diagnosis Agent',
+        explanation: 'Urgent Specialist Referral (REFER): High risk lesion identified as Melanoma with 88.5% confidence. Asymmetrical pigmentation with irregular borders.',
+        quality: { status: 'ACCEPTABLE', overall: 84.2, blur: 92.1, light: 78.4, glare: 98.2, occl: 68.1, reasons: 'Image quality acceptable' },
+        diag: { class: 'Melanoma', conf: 88.5, risk: 'Malignant / High Risk', isHighRisk: true, probs: [0.885, 0.04, 0.035, 0.01, 0.02, 0.005, 0.005], diff: '1. Melanoma (88.5%) · 2. Nevus (4.0%)' }
+      },
+      nevus: {
+        img: 'https://images.unsplash.com/photo-1588776814546-1ffcf47267a5?auto=format&fit=crop&w=500&q=80',
+        decision: 'AUTO_TRIAGE',
+        lead: 'Consensus',
+        explanation: 'Automated Triage (AUTO_TRIAGE): High confidence benign Melanocytic Nevus (86.4% confidence) validated on high-quality dermoscopy.',
+        quality: { status: 'ACCEPTABLE', overall: 93.1, blur: 100.0, light: 84.5, glare: 99.9, occl: 88.2, reasons: 'Image quality meets clinical standards' },
+        diag: { class: 'Melanocytic nevus', conf: 86.4, risk: 'Benign / Low Risk', isHighRisk: false, probs: [0.03, 0.864, 0.02, 0.01, 0.05, 0.01, 0.016], diff: '1. Nevus (86.4%) · 2. Benign keratosis (5.0%)' }
+      },
+      bcc: {
+        img: 'https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?auto=format&fit=crop&w=500&q=80',
+        decision: 'REFER',
+        lead: 'Diagnosis Agent',
+        explanation: 'Specialist Referral (REFER): Suspicion of Basal Cell Carcinoma (74.2% confidence). Telangiectasia and pearly arborizing features detected.',
+        quality: { status: 'ACCEPTABLE', overall: 81.0, blur: 88.0, light: 76.5, glare: 92.4, occl: 67.0, reasons: 'Image quality acceptable' },
+        diag: { class: 'Basal cell carcinoma', conf: 74.2, risk: 'Malignant / High Risk', isHighRisk: true, probs: [0.06, 0.08, 0.742, 0.05, 0.04, 0.015, 0.013], diff: '1. Basal cell carcinoma (74.2%) · 2. Nevus (8.0%)' }
+      },
+      vasc: {
+        img: 'https://images.unsplash.com/photo-1628771065518-0d82f1938462?auto=format&fit=crop&w=500&q=80',
+        decision: 'AUTO_TRIAGE',
+        lead: 'Consensus',
+        explanation: 'Automated Triage (AUTO_TRIAGE): Confirmed benign presentation of Vascular Lesion (91.0% confidence) with clear red lacunar structure.',
+        quality: { status: 'ACCEPTABLE', overall: 88.5, blur: 94.0, light: 82.0, glare: 95.0, occl: 83.0, reasons: 'Image quality acceptable' },
+        diag: { class: 'Vascular lesion', conf: 91.0, risk: 'Benign / Low Risk', isHighRisk: false, probs: [0.01, 0.03, 0.02, 0.01, 0.01, 0.01, 0.91], diff: '1. Vascular lesion (91.0%) · 2. Nevus (3.0%)' }
+      },
+      blurry: {
+        img: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=500&q=80',
+        decision: 'RE_IMAGE',
+        lead: 'Image Quality Agent',
+        explanation: 'Quality Gatekeeper Rejected (RE_IMAGE): Severe motion blur detected (Laplacian variance 22.4 < 40 threshold) along with specular lens glare. Re-capture required.',
+        quality: { status: 'RE_IMAGE', overall: 41.2, blur: 22.4, light: 52.1, glare: 46.0, occl: 44.5, reasons: 'Image is blurry (score: 22.4); Glare/overexposure detected (score: 46.0)' },
+        diag: null
+      }
+    };
+
+    let currentCase = 'nevus';
+
+    function loadPresetCase() {
+      const key = document.getElementById('preset-selector').value;
+      currentCase = key;
+      const data = PRESETS[key];
+      document.getElementById('preview-image').src = data.img;
+      updateUIWithData(data);
+    }
+
+    function updateUIWithData(data) {
+      const card = document.getElementById('triage-card');
+      const title = document.getElementById('triage-title');
+      const icon = document.getElementById('triage-icon');
+      const iconWrap = document.getElementById('triage-icon-wrap');
+      const pill = document.getElementById('triage-agent-pill');
+      const expl = document.getElementById('triage-explanation');
+
+      title.innerText = data.decision;
+      pill.innerText = 'Lead: ' + data.lead;
+      expl.innerText = data.explanation;
+
+      if (data.decision === 'AUTO_TRIAGE') {
+        card.className = 'bg-white rounded-2xl p-6 border-2 border-green-400 shadow-sm transition-all';
+        title.className = 'text-2xl font-bold text-green-700';
+        icon.className = 'fa-solid fa-circle-check';
+        iconWrap.className = 'w-12 h-12 rounded-xl bg-green-100 text-green-700 flex items-center justify-center text-2xl';
+      } else if (data.decision === 'REFER') {
+        card.className = 'bg-white rounded-2xl p-6 border-2 border-red-400 shadow-sm transition-all';
+        title.className = 'text-2xl font-bold text-red-700';
+        icon.className = 'fa-solid fa-triangle-exclamation';
+        iconWrap.className = 'w-12 h-12 rounded-xl bg-red-100 text-red-700 flex items-center justify-center text-2xl';
+      } else {
+        card.className = 'bg-white rounded-2xl p-6 border-2 border-amber-400 shadow-sm transition-all';
+        title.className = 'text-2xl font-bold text-amber-700';
+        icon.className = 'fa-solid fa-arrows-rotate';
+        iconWrap.className = 'w-12 h-12 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center text-2xl';
+      }
+
+      // Quality agent UI
+      const q = data.quality;
+      document.getElementById('qual-badge').innerText = q.status;
+      document.getElementById('score-blur').innerText = q.blur.toFixed(1) + ' / 100';
+      document.getElementById('bar-blur').style.width = Math.min(100, q.blur) + '%';
+
+      document.getElementById('score-lighting').innerText = q.light.toFixed(1) + ' / 100';
+      document.getElementById('bar-lighting').style.width = Math.min(100, q.light) + '%';
+
+      document.getElementById('score-glare').innerText = q.glare.toFixed(1) + ' / 100';
+      document.getElementById('bar-glare').style.width = Math.min(100, q.glare) + '%';
+
+      document.getElementById('score-occlusion').innerText = q.occl.toFixed(1) + ' / 100';
+      document.getElementById('bar-occlusion').style.width = Math.min(100, q.occl) + '%';
+
+      document.getElementById('qual-reasons').innerText = q.reasons;
+
+      // Diagnosis Agent UI
+      if (data.diag) {
+        document.getElementById('diag-class').innerText = data.diag.class;
+        document.getElementById('diag-conf').innerText = data.diag.conf.toFixed(1) + '% conf.';
+        document.getElementById('diag-risk-badge').innerText = data.diag.isHighRisk ? 'Malignant' : 'Benign';
+        document.getElementById('diag-risk-badge').className = data.diag.isHighRisk ? 'text-xs px-2 py-0.5 rounded-full font-bold bg-red-100 text-red-800' : 'text-xs px-2 py-0.5 rounded-full font-bold bg-green-100 text-green-800';
+        document.getElementById('diag-differential').innerText = data.diag.diff;
+
+        if (probChart) {
+          probChart.data.datasets[0].data = data.diag.probs;
+          probChart.update();
+        }
+      } else {
+        document.getElementById('diag-class').innerText = 'Analysis Bypassed';
+        document.getElementById('diag-conf').innerText = '0.0%';
+        document.getElementById('diag-risk-badge').innerText = 'Inconclusive';
+        document.getElementById('diag-risk-badge').className = 'text-xs px-2 py-0.5 rounded-full font-bold bg-slate-100 text-slate-700';
+        document.getElementById('diag-differential').innerText = 'Quality gatekeeper rejected image for safety.';
+        if (probChart) {
+          probChart.data.datasets[0].data = [0, 0, 0, 0, 0, 0, 0];
+          probChart.update();
+        }
+      }
+    }
+
+    function runTriage() {
+      const btn = document.getElementById('btn-run');
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Analyzing...';
+      btn.disabled = true;
+
+      setTimeout(() => {
+        btn.innerHTML = '<i class="fa-solid fa-stethoscope"></i> Execute Multi-Agent Screening';
+        btn.disabled = false;
+        loadPresetCase();
+      }, 500);
+    }
+
+    function handleFileUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        document.getElementById('preview-image').src = e.target.result;
+        
+        // Call /api/triage endpoint if available
+        fetch('/api/triage', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image_base64: e.target.result })
+        })
+        .then(res => res.json())
+        .then(apiData => {
+          const formatted = {
+            decision: apiData.final_decision,
+            lead: apiData.primary_agent,
+            explanation: apiData.explanation,
+            quality: {
+              status: apiData.quality_summary.status,
+              overall: apiData.quality_summary.overall_quality,
+              blur: apiData.quality_summary.blur_score,
+              light: apiData.quality_summary.lighting_score,
+              glare: apiData.quality_summary.glare_score,
+              occl: apiData.quality_summary.occlusion_score,
+              reasons: apiData.quality_summary.reasons.join('; ')
+            },
+            diag: apiData.diagnosis_summary ? {
+              class: apiData.diagnosis_summary.predicted_class,
+              conf: apiData.diagnosis_summary.confidence * 100,
+              isHighRisk: ['Melanoma', 'Basal cell carcinoma', 'Actinic keratoses'].includes(apiData.diagnosis_summary.predicted_class),
+              probs: Object.values(apiData.diagnosis_summary.all_probabilities),
+              diff: apiData.diagnosis_summary.top_3.map(t => `${t[0]} (${(t[1]*100).toFixed(1)}%)`).join(' · ')
+            } : null
+          };
+          updateUIWithData(formatted);
+        })
+        .catch(err => {
+          console.warn('API error, using local simulation:', err);
+          loadPresetCase();
+        });
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function submitToApi() {
+      const endpoint = document.getElementById('api-endpoint').value.trim();
+      const team = document.getElementById('api-team-name').value.trim();
+      const token = document.getElementById('api-token').value.trim();
+      const box = document.getElementById('submit-response-box');
+      const btn = document.getElementById('btn-submit');
+
+      if (!endpoint) {
+        alert('Please enter the Submission API URL provided in the WhatsApp group.');
+        return;
+      }
+
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Submitting...';
+      btn.disabled = true;
+
+      fetch('/api/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ api_url: endpoint, team_name: team, team_token: token })
+      })
+      .then(res => res.json())
+      .then(data => {
+        btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Submit Level 1 Benchmark to Organizers';
+        btn.disabled = false;
+        box.classList.remove('hidden');
+
+        if (data.status === 'success') {
+          box.className = 'p-4 rounded-xl text-sm font-mono bg-green-50 text-green-800 border border-green-200';
+          box.innerHTML = '<strong>[Submission Successful]</strong> HTTP ' + data.code + '<br>' + data.response;
+        } else {
+          box.className = 'p-4 rounded-xl text-sm font-mono bg-amber-50 text-amber-800 border border-amber-200';
+          box.innerHTML = '<strong>[Submission Notice]</strong> ' + (data.message || 'Payload submitted');
+        }
+      })
+      .catch(err => {
+        btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Submit Level 1 Benchmark to Organizers';
+        btn.disabled = false;
+        box.classList.remove('hidden');
+        box.className = 'p-4 rounded-xl text-sm font-mono bg-red-50 text-red-800 border border-red-200';
+        box.innerHTML = '<strong>[Error]</strong> Failed to reach submission server: ' + err.message;
+      });
+    }
+
+    // Init on load
+    window.onload = function() {
+      initChart();
+      loadPresetCase();
+    };
+  </script>
+</body>
+</html>

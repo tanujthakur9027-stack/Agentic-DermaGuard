@@ -1,0 +1,18 @@
+{
+  "lesion_classes": {
+    "0": "Melanoma",
+    "1": "Melanocytic nevus",
+    "2": "Basal cell carcinoma",
+    "3": "Actinic keratoses",
+    "4": "Benign keratosis",
+    "5": "Dermatofibroma",
+    "6": "Vascular lesion"
+  },
+  "train_samples": 7815,
+  "val_samples": 2000,
+  "image_size": 224,
+  "agents": [
+    "Image Quality Agent",
+    "Diagnosis Agent"
+  ]
+}

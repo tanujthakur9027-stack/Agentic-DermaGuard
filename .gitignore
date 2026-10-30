@@ -1,0 +1,10 @@
+Health/
+data/
+Cyber/
+models/*.pt
+logs/
+outputs/validation_detailed.csv
+__pycache__/
+*.jpg
+*.zip
+.vercel
