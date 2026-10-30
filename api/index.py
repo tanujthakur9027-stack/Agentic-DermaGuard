@@ -47,7 +47,23 @@ class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         path = self.path.split("?")[0]
         
-        if path.endswith("/api/benchmark") or path == "/api/benchmark":
+        if path.endswith("/api/download-submission-sample"):
+            sample_csv_path = os.path.join(WORKSPACE_ROOT, "outputs", "final_submission_format_sample.csv")
+            if os.path.exists(sample_csv_path):
+                self.send_response(200)
+                self.send_header("Content-Type", "text/csv")
+                self.send_header("Content-Disposition", 'attachment; filename="final_submission_format_sample.csv"')
+                self._send_cors_headers()
+                self.end_headers()
+                with open(sample_csv_path, "rb") as f:
+                    self.wfile.write(f.read())
+            else:
+                self.send_response(404)
+                self.send_header("Content-Type", "application/json")
+                self._send_cors_headers()
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": "Submission sample CSV not found"}).encode("utf-8"))
+        elif path.endswith("/api/benchmark") or path == "/api/benchmark":
             try:
                 if os.path.exists(BENCHMARK_FILE):
                     with open(BENCHMARK_FILE, "r") as f:

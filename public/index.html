@@ -3,46 +3,83 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Agentic DermaGuard | Six-Agent Skin Screening & Triage</title>
+  <title>Agentic DermaGuard | Six-Agent Skin Lesion Screening & Triage Workstation</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
-    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+    body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #070b13; }
     .font-mono { font-family: 'JetBrains Mono', monospace; }
-    .glass-panel {
-      background: rgba(17, 24, 39, 0.85);
-      backdrop-filter: blur(14px);
+    .glass-card {
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(16px);
       border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 4px 24px -1px rgba(0, 0, 0, 0.35);
     }
+    .glass-card-hover:hover {
+      border-color: rgba(6, 182, 212, 0.4);
+      box-shadow: 0 8px 32px -2px rgba(6, 182, 212, 0.15);
+    }
+    .custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+    .custom-scroll::-webkit-scrollbar-track { background: #0b1120; }
+    .custom-scroll::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
+    .custom-scroll::-webkit-scrollbar-thumb:hover { background: #334155; }
   </style>
 </head>
-<body class="bg-[#0b0f19] text-slate-100 min-h-screen flex flex-col selection:bg-cyan-500 selection:text-white">
+<body class="text-slate-100 min-h-screen flex flex-col selection:bg-cyan-500 selection:text-white">
 
-  <!-- Top Navigation Header -->
-  <header class="border-b border-slate-800 bg-[#0f172a]/90 backdrop-blur-md sticky top-0 z-50">
+  <!-- Top Enterprise Header -->
+  <header class="border-b border-slate-800/80 bg-[#0c1222]/90 backdrop-blur-md sticky top-0 z-50">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center h-16">
-      <div class="flex items-center space-x-3">
-        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center text-white text-xl shadow-lg shadow-cyan-500/20">
+      <div class="flex items-center space-x-3.5">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 via-blue-600 to-indigo-600 flex items-center justify-center text-white text-xl shadow-lg shadow-cyan-500/25 ring-1 ring-cyan-400/30">
           <i class="fa-solid fa-microscope"></i>
         </div>
         <div>
           <div class="flex items-center space-x-2">
-            <span class="text-lg font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-100 to-slate-400 bg-clip-text text-transparent">Agentic DermaGuard</span>
-            <span class="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-cyan-950 text-cyan-400 border border-cyan-800/60">Level 2 System</span>
+            <span class="text-lg font-black tracking-tight bg-gradient-to-r from-white via-slate-100 to-slate-300 bg-clip-text text-transparent">Agentic DermaGuard</span>
+            <span class="text-[10px] uppercase font-bold tracking-wider px-2.5 py-0.5 rounded-full bg-cyan-950/80 text-cyan-300 border border-cyan-800/60 shadow-sm">Level 2 Prototype</span>
           </div>
           <p class="text-[11px] text-slate-400 font-medium">Jaypee Agentic AI International Summit 2026 — Track 2 | Healthcare</p>
         </div>
       </div>
       <div class="flex items-center space-x-3">
-        <div class="flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs">
-          <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
-          <span class="text-slate-300 font-mono font-semibold">Six Agents Active</span>
+        <div class="hidden sm:flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-slate-900/90 border border-slate-800 text-xs">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span class="text-slate-300 font-mono text-[11px]">All 6 Agents Synchronized</span>
         </div>
+        <a href="https://github.com/tanujthakur9027-stack/Agentic-DermaGuard" target="_blank" class="text-xs px-3 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 transition flex items-center gap-1.5">
+          <i class="fa-brands fa-github text-sm"></i>
+          <span class="hidden md:inline font-mono">Repo</span>
+        </a>
       </div>
     </div>
   </header>
+
+  <!-- Interactive Agent Workflow Breadcrumb / Timeline -->
+  <div class="border-b border-slate-800/60 bg-[#090e1a]/80 py-2.5 px-4 overflow-x-auto custom-scroll">
+    <div class="max-w-7xl mx-auto flex items-center justify-between text-xs min-w-[760px]">
+      <div class="flex items-center space-x-2 text-[11px] font-mono text-slate-400">
+        <span class="text-cyan-400 font-bold uppercase tracking-wider text-[10px]">Multi-Agent Pipeline:</span>
+        <span class="px-2 py-0.5 rounded bg-blue-950/70 text-blue-300 border border-blue-800/60">A1 Quality Gate</span>
+        <i class="fa-solid fa-arrow-right text-[10px] text-slate-600"></i>
+        <span class="px-2 py-0.5 rounded bg-indigo-950/70 text-indigo-300 border border-indigo-800/60">A2 Pathology CNN</span>
+        <i class="fa-solid fa-arrow-right text-[10px] text-slate-600"></i>
+        <span class="px-2 py-0.5 rounded bg-amber-950/70 text-amber-300 border border-amber-800/60">A3 ABCD Morphometry</span>
+        <i class="fa-solid fa-arrow-right text-[10px] text-slate-600"></i>
+        <span class="px-2 py-0.5 rounded bg-purple-950/70 text-purple-300 border border-purple-800/60">A4 Demographic Prior</span>
+        <i class="fa-solid fa-arrow-right text-[10px] text-slate-600"></i>
+        <span class="px-2 py-0.5 rounded bg-rose-950/70 text-rose-300 border border-rose-800/60">A5 Safety Sentinel</span>
+        <i class="fa-solid fa-arrow-right text-[10px] text-slate-600"></i>
+        <span class="px-2 py-0.5 rounded bg-cyan-950/70 text-cyan-300 border border-cyan-800/60 font-bold">A6 Coordinator Disposition</span>
+      </div>
+      <button onclick="toggleCriteriaDrawer()" class="flex items-center space-x-1.5 text-xs text-slate-300 hover:text-cyan-400 transition font-semibold">
+        <i class="fa-solid fa-sliders text-cyan-400"></i>
+        <span>Clinical Thresholds</span>
+      </button>
+    </div>
+  </div>
 
   <!-- Navigation Bar -->
   <div class="border-b border-slate-800/80 bg-[#0f172a]/40">
@@ -50,31 +87,25 @@
       <nav class="flex space-x-8" aria-label="Tabs">
         <button onclick="switchTab('screening')" id="tab-screening" class="tab-btn py-3.5 px-1 border-b-2 font-semibold text-sm border-cyan-400 text-cyan-400 flex items-center space-x-2 transition">
           <i class="fa-solid fa-wand-magic-sparkles text-xs"></i>
-          <span>Six-Agent Screening & Triage</span>
+          <span>Six-Agent Clinical Screening</span>
         </button>
-        <button onclick="switchTab('criteria')" id="tab-criteria" class="tab-btn py-3.5 px-1 border-b-2 font-semibold text-sm border-transparent text-slate-400 hover:text-slate-200 flex items-center space-x-2 transition">
-          <i class="fa-solid fa-sliders text-xs"></i>
-          <span>Threshold Criteria</span>
+        <button onclick="switchTab('explanation')" id="tab-explanation" class="tab-btn py-3.5 px-1 border-b-2 font-semibold text-sm border-transparent text-slate-400 hover:text-slate-200 flex items-center space-x-2 transition">
+          <i class="fa-solid fa-book-medical text-xs"></i>
+          <span>Agent Roles &amp; Medical Formulations</span>
         </button>
         <button onclick="switchTab('benchmark')" id="tab-benchmark" class="tab-btn py-3.5 px-1 border-b-2 font-semibold text-sm border-transparent text-slate-400 hover:text-slate-200 flex items-center space-x-2 transition">
           <i class="fa-solid fa-chart-line text-xs"></i>
-          <span>Benchmark Dashboard</span>
+          <span>Validation Benchmark (1,942 Samples)</span>
         </button>
         <button onclick="switchTab('submit')" id="tab-submit" class="tab-btn py-3.5 px-1 border-b-2 font-semibold text-sm border-transparent text-slate-400 hover:text-slate-200 flex items-center space-x-2 transition">
           <i class="fa-solid fa-paper-plane text-xs"></i>
           <span>Summit API Submission</span>
         </button>
       </nav>
-
-      <!-- Quick Criteria Toggle -->
-      <button onclick="toggleCriteriaDrawer()" class="hidden md:flex items-center space-x-2 text-xs font-semibold px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">
-        <i class="fa-solid fa-gear text-cyan-400"></i>
-        <span>Adjust Thresholds</span>
-      </button>
     </div>
   </div>
 
-  <!-- Collapsible Threshold Settings Bar -->
+  <!-- Collapsible Threshold Criteria Tuning Drawer -->
   <div id="criteria-drawer" class="hidden border-b border-cyan-900/40 bg-slate-900/95 backdrop-blur-md px-4 sm:px-8 py-5">
     <div class="max-w-7xl mx-auto space-y-4">
       <div class="flex justify-between items-center">
@@ -121,56 +152,59 @@
   </div>
 
   <!-- Main Workspace -->
-  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full space-y-6">
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-7 flex-1 w-full space-y-6">
 
     <!-- TAB 1: SIX-AGENT SCREENING -->
     <div id="content-screening" class="space-y-6">
 
-      <!-- Interactive Grid: Input Panel & Master Coordinator Banner -->
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <!-- Top Row: Input & Visual Viewport + Master Coordinator Banner -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-7">
         
         <!-- Left: Image & Context Input Panel -->
         <div class="lg:col-span-5 space-y-4">
-          <div class="glass-panel rounded-2xl p-6 shadow-xl space-y-4 border border-slate-800">
-            <h3 class="font-bold text-white text-base flex items-center justify-between">
-              <span class="flex items-center gap-2">
-                <i class="fa-regular fa-image text-cyan-400"></i> Dermoscopy Input &amp; Context
+          <div class="glass-card rounded-2xl p-5 space-y-4">
+            
+            <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+              <span class="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
+                <i class="fa-regular fa-image text-cyan-400"></i> Dermoscopy Case Input
               </span>
-              <span id="pixel-status-badge" class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700">
+              <span id="pixel-status-badge" class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-cyan-400 border border-slate-700">
                 Ready
               </span>
-            </h3>
+            </div>
 
-            <!-- Preset Cases Dropdown -->
+            <!-- Preset Clinical Cases Dropdown -->
             <div>
-              <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Preset Verified Clinical Cases (HAM10000)</label>
-              <select id="case-select" onchange="onSelectCase()" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 focus:ring-2 focus:ring-cyan-500 focus:outline-none">
-                <option value="melanoma">Case 1: Invasive Melanoma (mel) - High Asymmetry &amp; Irregular Border</option>
-                <option value="nevus" selected>Case 2: Melanocytic Nevus (nv) - Typical Symmetrical Benign Mole</option>
-                <option value="bcc">Case 3: Basal Cell Carcinoma (bcc) - Translucent Telangiectasia</option>
-                <option value="akiec">Case 4: Actinic Keratoses (akiec) - Rough Scaly Pre-Malignancy</option>
-                <option value="bkl">Case 5: Benign Keratosis (bkl) - Seborrheic Keratosis</option>
-                <option value="df">Case 6: Dermatofibroma (df) - Benign Dermal Nodule</option>
-                <option value="vasc">Case 7: Vascular Lesion (vasc) - Cherry Angioma</option>
-                <option value="blur_defect">Defect Case 8: Severe Blur Degraded (Triggers Re-Image)</option>
-                <option value="glare_defect">Defect Case 9: Specular Flash Glare (Triggers Re-Image)</option>
-                <option value="occl_defect">Defect Case 10: Off-Center Truncation (Triggers Re-Image)</option>
+              <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Curated Clinical Cases (HAM10000)</label>
+              <select id="case-select" onchange="onSelectCase()" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-200 focus:ring-2 focus:ring-cyan-500 focus:outline-none font-medium">
+                <option value="melanoma">Case 1: Invasive Melanoma (mel) — High Asymmetry &amp; Irregular Border</option>
+                <option value="nevus" selected>Case 2: Melanocytic Nevus (nv) — Symmetrical Benign Mole</option>
+                <option value="bcc">Case 3: Basal Cell Carcinoma (bcc) — Translucent Telangiectasia</option>
+                <option value="akiec">Case 4: Actinic Keratoses (akiec) — Rough Scaly Pre-Malignancy</option>
+                <option value="bkl">Case 5: Benign Keratosis (bkl) — Seborrheic Keratosis</option>
+                <option value="df">Case 6: Dermatofibroma (df) — Central Scar-Like Patch</option>
+                <option value="vasc">Case 7: Vascular Lesion (vasc) — Cherry Angioma</option>
+                <option value="conflict_case">Case 8: High-Risk Elderly Scalp (Triggers Safety Agent Veto)</option>
+                <option value="blur_defect">Defect Case 9: Severe Hand Motion Blur (Triggers Re-Image)</option>
+                <option value="glare_defect">Defect Case 10: Specular Flash Glare (Triggers Re-Image)</option>
               </select>
             </div>
 
             <!-- Upload Custom File -->
-            <div class="border-2 border-dashed border-slate-700 hover:border-cyan-500/60 rounded-xl p-3 text-center transition cursor-pointer relative bg-slate-900/40 hover:bg-slate-900/80">
+            <div class="border-2 border-dashed border-slate-700 hover:border-cyan-500/60 rounded-xl p-2.5 text-center transition cursor-pointer relative bg-slate-900/30 hover:bg-slate-900/60">
               <input type="file" id="image-upload" accept="image/*" onchange="onFileUpload(event)" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full">
-              <i class="fa-solid fa-cloud-arrow-up text-xl text-cyan-400 mb-0.5"></i>
-              <p class="text-xs text-slate-300 font-semibold">Upload Dermoscopy Image for Live Six-Agent Triage</p>
+              <div class="flex items-center justify-center gap-2 text-xs text-slate-300">
+                <i class="fa-solid fa-cloud-arrow-up text-cyan-400"></i>
+                <span class="font-medium">Upload Any Dermoscopy Image (JPG/PNG)</span>
+              </div>
             </div>
 
-            <!-- Image View Canvas Frame with Edge Mapping View Toggles -->
+            <!-- Image Viewport with 3 Specialized Visual Modes -->
             <div class="space-y-2">
               <div class="flex items-center justify-between text-xs font-semibold text-slate-400">
-                <span>Visual Viewport:</span>
+                <span>Viewport Layer:</span>
                 <div class="flex gap-1">
-                  <button id="view-mode-orig" onclick="setViewMode('orig')" class="px-2 py-0.5 rounded text-[11px] bg-cyan-950 text-cyan-300 border border-cyan-800">📷 Original</button>
+                  <button id="view-mode-orig" onclick="setViewMode('orig')" class="px-2 py-0.5 rounded text-[11px] bg-cyan-950 text-cyan-300 border border-cyan-800 font-bold">📷 Original</button>
                   <button id="view-mode-edges" onclick="setViewMode('edges')" class="px-2 py-0.5 rounded text-[11px] bg-slate-800 text-slate-400 hover:text-white border border-slate-700">🔍 Mapped Edges (A3)</button>
                   <button id="view-mode-sharp" onclick="setViewMode('sharp')" class="px-2 py-0.5 rounded text-[11px] bg-slate-800 text-slate-400 hover:text-white border border-slate-700">⚡ Sharpness (A1)</button>
                 </div>
@@ -179,31 +213,31 @@
               <div class="relative rounded-xl overflow-hidden bg-black border border-slate-800 aspect-square flex items-center justify-center shadow-inner">
                 <img id="active-image" crossorigin="anonymous" src="" alt="Dermoscopy Preview" class="w-full h-full object-cover">
                 
-                <div class="absolute bottom-2 left-2 bg-slate-950/80 backdrop-blur-md text-[10px] px-2 py-0.5 rounded font-mono text-slate-300 border border-slate-800">
-                  <span id="img-dim-info">224 x 224 px</span>
+                <div class="absolute bottom-2 left-2 bg-slate-950/85 backdrop-blur-md text-[10px] px-2.5 py-1 rounded-md font-mono text-slate-300 border border-slate-800">
+                  <span id="img-dim-info">224 × 224 px</span>
                 </div>
-                <div id="criteria-indicator-pill" class="absolute top-2 right-2 text-[10px] font-bold px-2 py-0.5 rounded font-mono bg-emerald-950/80 text-emerald-400 border border-emerald-800/80">
+                <div id="criteria-indicator-pill" class="absolute top-2 right-2 text-[10px] font-bold px-2.5 py-1 rounded-md font-mono bg-emerald-950/90 text-emerald-300 border border-emerald-800/80">
                   Quality: PASS
                 </div>
               </div>
             </div>
 
             <!-- Patient Context Form (Agent 4 Inputs) -->
-            <div class="p-3.5 bg-slate-950/80 rounded-xl border border-slate-800 space-y-2.5">
+            <div class="p-3 bg-slate-950/90 rounded-xl border border-slate-800 space-y-2">
               <div class="flex items-center justify-between">
                 <span class="text-xs font-bold text-slate-300 flex items-center gap-1.5">
-                  <i class="fa-solid fa-user-doctor text-cyan-400"></i> Patient Clinical Context (Agent 4)
+                  <i class="fa-solid fa-user-doctor text-purple-400"></i> Patient Clinical Context (Agent 4)
                 </span>
-                <span class="text-[10px] text-slate-500">Demographic Priors</span>
+                <span class="text-[10px] text-slate-500 font-mono">Demographics</span>
               </div>
               <div class="grid grid-cols-3 gap-2 text-xs">
                 <div>
                   <label class="block text-slate-400 text-[10px] mb-1">Age (Years)</label>
-                  <input type="number" id="ctx-age" value="54" min="1" max="110" oninput="executeAnalysis()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-slate-200">
+                  <input type="number" id="ctx-age" value="54" min="1" max="110" oninput="executeAnalysis()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-slate-200 font-mono text-xs">
                 </div>
                 <div>
                   <label class="block text-slate-400 text-[10px] mb-1">Gender / Sex</label>
-                  <select id="ctx-sex" onchange="executeAnalysis()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-slate-200">
+                  <select id="ctx-sex" onchange="executeAnalysis()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-slate-200 text-xs">
                     <option value="male" selected>Male</option>
                     <option value="female">Female</option>
                     <option value="unknown">Unknown</option>
@@ -211,7 +245,7 @@
                 </div>
                 <div>
                   <label class="block text-slate-400 text-[10px] mb-1">Anatomical Site</label>
-                  <select id="ctx-loc" onchange="executeAnalysis()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-slate-200">
+                  <select id="ctx-loc" onchange="executeAnalysis()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-slate-200 text-xs">
                     <option value="back" selected>Back</option>
                     <option value="scalp">Scalp (High UV)</option>
                     <option value="face">Face (High UV)</option>
@@ -230,100 +264,103 @@
               </div>
             </div>
 
-            <button onclick="executeAnalysis()" id="btn-analyze" class="w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-cyan-600/20 transition flex items-center justify-center gap-2">
+            <button onclick="executeAnalysis()" id="btn-analyze" class="w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-cyan-600/25 transition flex items-center justify-center gap-2 text-sm">
               <i class="fa-solid fa-stethoscope"></i>
-              <span>Execute Six-Agent Screening &amp; Triage</span>
+              <span>Execute Six-Agent Consensus Screening</span>
             </button>
           </div>
         </div>
 
         <!-- Right: Master Coordinator Decision Banner & Traceable Rationale -->
-        <div class="lg:col-span-7 space-y-5">
+        <div class="lg:col-span-7 space-y-4">
 
           <!-- Master Decision Banner -->
-          <div id="decision-banner" class="rounded-2xl p-6 border-2 transition-all duration-300 shadow-xl bg-slate-900 border-emerald-500/60">
-            <div class="flex items-center justify-between pb-4 border-b border-slate-800">
-              <div class="flex items-center gap-3.5">
+          <div id="decision-banner" class="rounded-2xl p-5 border-2 transition-all duration-300 shadow-xl bg-slate-900/90 border-emerald-500/80">
+            <div class="flex items-center justify-between pb-3.5 border-b border-slate-800">
+              <div class="flex items-center gap-3">
                 <div id="decision-icon-wrap" class="w-12 h-12 rounded-xl flex items-center justify-center text-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
                   <i id="decision-icon" class="fa-solid fa-circle-check"></i>
                 </div>
                 <div>
                   <div class="flex items-center space-x-2">
-                    <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Coordinator Agent (A6) Final Disposition</p>
-                    <span id="decision-badge-tag" class="text-[10px] font-bold px-2 py-0.5 rounded font-mono bg-emerald-950 text-emerald-400 border border-emerald-800">Authorized</span>
+                    <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Coordinator Agent (A6) Final Disposition</p>
+                    <span id="decision-badge-tag" class="text-[10px] font-bold px-2 py-0.5 rounded font-mono bg-emerald-950 text-emerald-400 border border-emerald-800">Screening Disposition</span>
                   </div>
                   <h3 id="decision-title" class="text-3xl font-black text-emerald-400 tracking-tight mt-0.5">AUTO_TRIAGE</h3>
                 </div>
               </div>
               <div class="text-right">
-                <p class="text-[10px] text-slate-400 font-bold uppercase">Predicted Class Code</p>
+                <p class="text-[10px] text-slate-400 font-bold uppercase">Diagnosis Class Code</p>
                 <div class="flex items-center justify-end gap-1.5 mt-0.5">
-                  <span id="pred-code-badge" class="px-2.5 py-1 rounded-lg bg-cyan-950 text-cyan-300 font-mono font-bold text-sm border border-cyan-800">nv</span>
-                  <span id="pred-conf-badge" class="text-xs text-slate-300 font-mono">82.4%</span>
+                  <span id="pred-code-badge" class="px-2.5 py-1 rounded-lg bg-cyan-950 text-cyan-300 font-mono font-black text-sm border border-cyan-800">nv</span>
+                  <span id="pred-conf-badge" class="text-xs text-slate-300 font-mono font-bold">84.0%</span>
                 </div>
-                <p id="pred-name-text" class="text-[11px] text-slate-400">Melanocytic nevus</p>
+                <p id="pred-name-text" class="text-[11px] text-slate-400 font-medium">Melanocytic nevus</p>
               </div>
             </div>
 
-            <!-- Traceable Chain matching Summit Brief -->
-            <div class="mt-3.5 bg-slate-950/80 px-3.5 py-2.5 rounded-xl border border-slate-800">
-              <p class="text-[10px] font-bold uppercase tracking-wider text-cyan-400 mb-1">Traceable Evidence Chain (Summit Format):</p>
-              <p id="decision-traceable-chain" class="font-mono text-xs text-slate-200 font-bold">
-                A1: PASS | A2: nv • 0.82 | A3+A4: BENIGN_CUES | A5: PASS | A6: AUTO_TRIAGE
+            <!-- Traceable Chain matching Summit Brief Example -->
+            <div class="mt-3 bg-slate-950/90 px-3.5 py-2.5 rounded-xl border border-slate-800">
+              <div class="flex items-center justify-between mb-1">
+                <span class="text-[10px] font-bold uppercase tracking-wider text-cyan-400">Traceable Evidence Chain (Official Summit Format):</span>
+                <span class="text-[9px] font-mono text-slate-500">Day 2 Brief Spec</span>
+              </div>
+              <p id="decision-traceable-chain" class="font-mono text-xs text-slate-100 font-bold tracking-tight">
+                A1: PASS | A2: nv • 0.84 | A3+A4: BENIGN_CUES | A5: PASS | A6: AUTO_TRIAGE
               </p>
             </div>
 
-            <!-- Traceable Clinical Rationale -->
-            <div class="mt-3.5">
-              <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Traceable Decision Policy &amp; Rationale:</p>
-              <p id="decision-explanation" class="text-xs text-slate-300 leading-relaxed font-medium">
-                Autonomous screening disposition approved: High confidence benign presentation (nv • 82.4%) verified on usable dermoscopy with no safety flags or clinical conflicts.
+            <!-- Traceable Clinical Policy & Rationale -->
+            <div class="mt-3 text-xs">
+              <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Coordinator Rationale &amp; Clinical Justification:</p>
+              <p id="decision-explanation" class="text-slate-300 leading-relaxed font-medium">
+                Autonomous screening disposition approved: High confidence benign presentation (nv • 84.0%) verified on usable dermoscopy with no safety flags or clinical conflicts.
               </p>
             </div>
           </div>
 
           <!-- THE SIX SPECIALIZED AGENTS GRID -->
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
 
             <!-- AGENT 1: Image Quality Agent -->
-            <div class="glass-panel rounded-xl p-4 border border-slate-800 space-y-3 shadow-lg">
+            <div class="glass-card rounded-xl p-4 space-y-2.5 glass-card-hover transition">
               <div class="flex justify-between items-center pb-2 border-b border-slate-800">
                 <div class="flex items-center gap-2">
                   <div class="w-6 h-6 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center text-xs">
                     <i class="fa-solid fa-camera"></i>
                   </div>
-                  <h4 class="font-bold text-white text-xs">Agent 1: Image Quality (Gatekeeper)</h4>
+                  <h4 class="font-bold text-white text-xs">Agent 1: Quality Gatekeeper</h4>
                 </div>
-                <span id="a1-status-pill" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-800">
+                <span id="a1-status-pill" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-800 font-mono">
                   PASS
                 </span>
               </div>
-              <div class="space-y-2 text-xs">
+              <div class="space-y-1.5 text-xs">
                 <div>
-                  <div class="flex justify-between font-mono text-[11px] mb-0.5">
-                    <span class="text-slate-400">Sharpness / Blur:</span>
-                    <span id="a1-blur" class="font-bold text-slate-200">88.5 <span class="text-slate-500 text-[10px]">(th: 40)</span></span>
+                  <div class="flex justify-between font-mono text-[10px] mb-0.5">
+                    <span class="text-slate-400">Sharpness / Blur (Laplacian + Tenengrad):</span>
+                    <span id="a1-blur" class="font-bold text-slate-200">88.5 <span class="text-slate-500 text-[9px]">(th: 40)</span></span>
                   </div>
                   <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
                     <div id="bar-blur" class="bg-gradient-to-r from-blue-500 to-cyan-400 h-full rounded-full" style="width: 88%"></div>
                   </div>
                 </div>
                 <div>
-                  <div class="flex justify-between font-mono text-[11px] mb-0.5">
-                    <span class="text-slate-400">Illumination / Entropy:</span>
-                    <span id="a1-light" class="font-bold text-slate-200">82.1 <span class="text-slate-500 text-[10px]">(th: 40)</span></span>
+                  <div class="flex justify-between font-mono text-[10px] mb-0.5">
+                    <span class="text-slate-400">Illumination (Histogram Entropy H):</span>
+                    <span id="a1-light" class="font-bold text-slate-200">82.1 <span class="text-slate-500 text-[9px]">(th: 40)</span></span>
                   </div>
                   <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
                     <div id="bar-light" class="bg-gradient-to-r from-cyan-500 to-emerald-400 h-full rounded-full" style="width: 82%"></div>
                   </div>
                 </div>
-                <div class="grid grid-cols-2 gap-2 pt-1 font-mono text-[11px]">
-                  <div class="bg-slate-900/60 p-1.5 rounded border border-slate-800">
-                    <span class="text-slate-500 text-[10px] block">Specular Glare</span>
+                <div class="grid grid-cols-2 gap-2 pt-1 font-mono text-[10px]">
+                  <div class="bg-slate-950/70 p-1.5 rounded border border-slate-800">
+                    <span class="text-slate-500 text-[9px] block">Glare (V-Channel)</span>
                     <span id="a1-glare" class="font-bold text-slate-200">95.4 / 100</span>
                   </div>
-                  <div class="bg-slate-900/60 p-1.5 rounded border border-slate-800">
-                    <span class="text-slate-500 text-[10px] block">Lesion Centering</span>
+                  <div class="bg-slate-950/70 p-1.5 rounded border border-slate-800">
+                    <span class="text-slate-500 text-[9px] block">Centering (Outer Band)</span>
                     <span id="a1-occl" class="font-bold text-slate-200">62.8%</span>
                   </div>
                 </div>
@@ -331,7 +368,7 @@
             </div>
 
             <!-- AGENT 2: Diagnosis Agent -->
-            <div class="glass-panel rounded-xl p-4 border border-slate-800 space-y-3 shadow-lg">
+            <div class="glass-card rounded-xl p-4 space-y-2.5 glass-card-hover transition">
               <div class="flex justify-between items-center pb-2 border-b border-slate-800">
                 <div class="flex items-center gap-2">
                   <div class="w-6 h-6 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-xs">
@@ -339,44 +376,44 @@
                   </div>
                   <h4 class="font-bold text-white text-xs">Agent 2: Diagnosis (7 Classes)</h4>
                 </div>
-                <span id="a2-risk-tag" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-800">
+                <span id="a2-risk-tag" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-800 font-mono">
                   nv • Low Risk
                 </span>
               </div>
-              <div class="h-28 w-full">
+              <div class="h-24 w-full">
                 <canvas id="probsChart"></canvas>
               </div>
-              <div class="flex justify-between items-center text-[11px] pt-1 border-t border-slate-800 font-mono">
-                <span class="text-slate-400">Confidence:</span>
-                <span id="a2-conf" class="font-bold text-cyan-400">82.4%</span>
+              <div class="flex justify-between items-center text-[10px] pt-1 border-t border-slate-800 font-mono">
+                <span class="text-slate-400">Certainty Margin: <span id="a2-margin" class="text-slate-200 font-bold">+0.78</span></span>
+                <span id="a2-conf" class="font-bold text-cyan-400">84.0% Primary</span>
               </div>
             </div>
 
             <!-- AGENT 3: Lesion Analysis Agent (ABCD) -->
-            <div class="glass-panel rounded-xl p-4 border border-slate-800 space-y-3 shadow-lg">
+            <div class="glass-card rounded-xl p-4 space-y-2.5 glass-card-hover transition">
               <div class="flex justify-between items-center pb-2 border-b border-slate-800">
                 <div class="flex items-center gap-2">
                   <div class="w-6 h-6 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center text-xs">
                     <i class="fa-solid fa-draw-polygon"></i>
                   </div>
-                  <h4 class="font-bold text-white text-xs">Agent 3: Lesion Analysis (ABCD)</h4>
+                  <h4 class="font-bold text-white text-xs">Agent 3: ABCD Morphometry</h4>
                 </div>
-                <span id="a3-suspicion-tag" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-800">
-                  BENIGN CUES
+                <span id="a3-tds-tag" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-800 font-mono">
+                  TDS: 3.42 (Benign)
                 </span>
               </div>
-              <div class="grid grid-cols-3 gap-2 text-center font-mono text-[11px]">
-                <div class="bg-slate-900/60 p-1.5 rounded border border-slate-800">
-                  <span class="text-slate-500 text-[10px] block">Asymmetry</span>
-                  <span id="a3-asym" class="font-bold text-slate-200">0.24</span>
+              <div class="grid grid-cols-3 gap-2 text-center font-mono text-[10px]">
+                <div class="bg-slate-950/70 p-1.5 rounded border border-slate-800">
+                  <span class="text-slate-500 text-[9px] block">A (Asymmetry)</span>
+                  <span id="a3-asym" class="font-bold text-slate-200">0 / 2 Axes</span>
                 </div>
-                <div class="bg-slate-900/60 p-1.5 rounded border border-slate-800">
-                  <span class="text-slate-500 text-[10px] block">Border Compact</span>
-                  <span id="a3-border" class="font-bold text-slate-200">1.28</span>
+                <div class="bg-slate-950/70 p-1.5 rounded border border-slate-800">
+                  <span class="text-slate-500 text-[9px] block">B (Border Octants)</span>
+                  <span id="a3-border" class="font-bold text-slate-200">1 / 8 Score</span>
                 </div>
-                <div class="bg-slate-900/60 p-1.5 rounded border border-slate-800">
-                  <span class="text-slate-500 text-[10px] block">Color Var</span>
-                  <span id="a3-color" class="font-bold text-slate-200">0.21</span>
+                <div class="bg-slate-950/70 p-1.5 rounded border border-slate-800">
+                  <span class="text-slate-500 text-[9px] block">C (Color Count)</span>
+                  <span id="a3-color" class="font-bold text-slate-200">1 / 6 Colors</span>
                 </div>
               </div>
               <p id="a3-summary" class="text-[11px] text-slate-300 leading-snug">
@@ -385,7 +422,7 @@
             </div>
 
             <!-- AGENT 4: Reasoning / Context Agent -->
-            <div class="glass-panel rounded-xl p-4 border border-slate-800 space-y-3 shadow-lg">
+            <div class="glass-card rounded-xl p-4 space-y-2.5 glass-card-hover transition">
               <div class="flex justify-between items-center pb-2 border-b border-slate-800">
                 <div class="flex items-center gap-2">
                   <div class="w-6 h-6 rounded-lg bg-purple-500/20 text-purple-400 flex items-center justify-center text-xs">
@@ -393,18 +430,18 @@
                   </div>
                   <h4 class="font-bold text-white text-xs">Agent 4: Reasoning / Context</h4>
                 </div>
-                <span id="a4-risk-tag" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-800">
+                <span id="a4-risk-tag" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-800 font-mono">
                   LOW RISK
                 </span>
               </div>
-              <div class="space-y-1.5 text-[11px] text-slate-300">
-                <div class="flex justify-between font-mono">
-                  <span class="text-slate-400">Context Risk Score:</span>
+              <div class="space-y-1 text-[11px] text-slate-300">
+                <div class="flex justify-between font-mono text-[10px]">
+                  <span class="text-slate-400">Context Prior Risk:</span>
                   <span id="a4-score" class="font-bold text-slate-200">0.25 / 1.0</span>
                 </div>
-                <div class="flex justify-between font-mono">
-                  <span class="text-slate-400">Missing-Field Flags:</span>
-                  <span id="a4-missing" class="font-bold text-slate-200">0 Flags</span>
+                <div class="flex justify-between font-mono text-[10px]">
+                  <span class="text-slate-400">Completeness:</span>
+                  <span id="a4-missing" class="font-bold text-slate-200">100% (0 Missing)</span>
                 </div>
                 <p id="a4-evidence" class="text-[11px] text-slate-300 leading-snug pt-1 border-t border-slate-800">
                   Adult male with back lesion; standard anatomical site without acute high-UV scalp/facial triad.
@@ -413,7 +450,7 @@
             </div>
 
             <!-- AGENT 5: Safety Agent -->
-            <div class="glass-panel rounded-xl p-4 border border-slate-800 space-y-3 shadow-lg">
+            <div class="glass-card rounded-xl p-4 space-y-2.5 glass-card-hover transition">
               <div class="flex justify-between items-center pb-2 border-b border-slate-800">
                 <div class="flex items-center gap-2">
                   <div class="w-6 h-6 rounded-lg bg-rose-500/20 text-rose-400 flex items-center justify-center text-xs">
@@ -421,18 +458,18 @@
                   </div>
                   <h4 class="font-bold text-white text-xs">Agent 5: Safety Sentinel &amp; Veto</h4>
                 </div>
-                <span id="a5-flag-pill" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-800">
+                <span id="a5-flag-pill" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-800 font-mono">
                   PASS
                 </span>
               </div>
-              <div class="space-y-1.5 text-[11px] text-slate-300">
-                <div class="flex justify-between font-mono">
+              <div class="space-y-1 text-[11px] text-slate-300">
+                <div class="flex justify-between font-mono text-[10px]">
                   <span class="text-slate-400">Auto-Triage Veto:</span>
-                  <span id="a5-veto-status" class="font-bold text-emerald-400">NONE (Safe)</span>
+                  <span id="a5-veto-status" class="font-bold text-emerald-400">NONE (Authorized)</span>
                 </div>
-                <div class="flex justify-between font-mono">
-                  <span class="text-slate-400">Primary Conflict:</span>
-                  <span id="a5-trigger" class="font-bold text-slate-200">None Detected</span>
+                <div class="flex justify-between font-mono text-[10px]">
+                  <span class="text-slate-400">Trigger Rule:</span>
+                  <span id="a5-trigger" class="font-bold text-slate-200">No Conflict</span>
                 </div>
                 <p id="a5-justification" class="text-[11px] text-slate-300 leading-snug pt-1 border-t border-slate-800">
                   Cross-agent consistency verified: Diagnostic confidence, symmetric ABCD structure, and context align safely.
@@ -441,7 +478,7 @@
             </div>
 
             <!-- AGENT 6: Coordinator Agent -->
-            <div class="glass-panel rounded-xl p-4 border border-slate-800 space-y-3 shadow-lg">
+            <div class="glass-card rounded-xl p-4 space-y-2.5 glass-card-hover transition">
               <div class="flex justify-between items-center pb-2 border-b border-slate-800">
                 <div class="flex items-center gap-2">
                   <div class="w-6 h-6 rounded-lg bg-cyan-500/20 text-cyan-400 flex items-center justify-center text-xs">
@@ -449,18 +486,18 @@
                   </div>
                   <h4 class="font-bold text-white text-xs">Agent 6: Coordinator Policy</h4>
                 </div>
-                <span id="a6-policy-pill" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan-950 text-cyan-400 border border-cyan-800">
-                  POLICY ENFORCED
+                <span id="a6-policy-pill" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan-950 text-cyan-400 border border-cyan-800 font-mono">
+                  RULE 5 ENFORCED
                 </span>
               </div>
-              <div class="space-y-1.5 text-[11px] text-slate-300">
-                <div class="flex justify-between font-mono">
-                  <span class="text-slate-400">Applied Rule:</span>
-                  <span id="a6-rule-name" class="font-bold text-cyan-400">Rule 5 (Verified Benign)</span>
+              <div class="space-y-1 text-[11px] text-slate-300">
+                <div class="flex justify-between font-mono text-[10px]">
+                  <span class="text-slate-400">Applied Policy:</span>
+                  <span id="a6-rule-name" class="font-bold text-cyan-400">Verified Benign Screening</span>
                 </div>
-                <div class="flex justify-between font-mono">
-                  <span class="text-slate-400">Authorized Action:</span>
-                  <span id="a6-action-code" class="font-bold text-emerald-400">AUTO_TRIAGE</span>
+                <div class="flex justify-between font-mono text-[10px]">
+                  <span class="text-slate-400">Authorized Disposition:</span>
+                  <span id="a6-action-code" class="font-bold text-emerald-400 font-mono">AUTO_TRIAGE</span>
                 </div>
                 <p id="a6-audit-trail" class="text-[11px] text-slate-300 leading-snug pt-1 border-t border-slate-800">
                   Full 6-agent deterministic audit completed and logged for evaluation panel review.
@@ -476,69 +513,142 @@
 
     </div>
 
-    <!-- TAB 2: THRESHOLD CRITERIA & POLICY SPEC -->
-    <div id="content-criteria" class="hidden space-y-6">
-      <div class="glass-panel rounded-2xl p-6 border border-slate-800 space-y-6">
+    <!-- TAB 2: AGENT ROLES & MEDICAL FORMULATIONS ("BRIEFICATION") -->
+    <div id="content-explanation" class="hidden space-y-6">
+      <div class="glass-card rounded-2xl p-6 border border-slate-800 space-y-6">
         <div>
-          <h3 class="text-xl font-bold text-white">Clinical Decision Criteria &amp; Six-Agent Consensus Policy</h3>
-          <p class="text-xs text-slate-400 mt-1">Mathematical cutoffs, safety veto triggers, and deterministic coordinator rules.</p>
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded bg-cyan-950 text-cyan-400 border border-cyan-800 text-[10px] font-mono uppercase font-bold">Track 2 Healthcare Spec</span>
+            <span class="text-xs text-slate-400">Jaypee Agentic AI Summit 2026</span>
+          </div>
+          <h3 class="text-2xl font-black text-white mt-1">Six Specialized Roles &amp; Clinical Decision Architecture</h3>
+          <p class="text-xs text-slate-400 mt-1 leading-relaxed">
+            Why multi-agent? Standalone neural networks produce unverified predictions without capture-quality checks, clinical morphometry, or patient demographic safeguards. DermaGuard separates perception, diagnosis, morphometry, patient context, safety auditing, and coordination into 6 collaborative specialist agents.
+          </p>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">
-          <div class="p-4 bg-slate-950/80 rounded-xl border border-slate-800 space-y-2">
-            <h4 class="font-bold text-cyan-400 text-sm">Agent 1: Quality Gatekeeper Criteria</h4>
-            <p class="text-slate-300">Evaluates Laplacian variance (sharpness), histogram entropy (lighting), HSV V-channel glare, and centering edge ratio.</p>
-            <ul class="list-disc list-inside text-slate-400 space-y-1">
-              <li>Sharpness &lt; Cutoff: Triggers Blur Defect flag</li>
-              <li>Entropy &lt; Cutoff: Triggers Illumination Defect flag</li>
-              <li>Glare Score &lt; Cutoff: Triggers Specular Void flag</li>
-              <li>Overall Quality &lt; 50 or &ge;2 Defects: Short-circuits to RE_IMAGE</li>
-            </ul>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 text-xs">
+          
+          <!-- Agent 1 Card Brief -->
+          <div class="p-4 bg-slate-950/80 rounded-xl border border-slate-800 space-y-2.5">
+            <div class="flex items-center gap-2 text-blue-400 font-bold">
+              <i class="fa-solid fa-camera"></i>
+              <span>Agent 1: Image Quality Agent</span>
+            </div>
+            <p class="text-slate-300 leading-relaxed">
+              Acts as the initial gatekeeper. Rejects compromised captures before diagnostic misclassification occurs.
+            </p>
+            <div class="bg-slate-900 p-2.5 rounded-lg border border-slate-800 font-mono text-[10px] space-y-1">
+              <div>• <strong>Sharpness:</strong> Laplacian \(\sigma^2\) + Tenengrad \(G^2\)</div>
+              <div>• <strong>Lighting:</strong> Shannon Entropy \(H = -\sum p \log_2 p\)</div>
+              <div>• <strong>Glare:</strong> HSV Value Saturation \(V > 240\)</div>
+              <div>• <strong>Centering:</strong> Active field vs. outer border clipping</div>
+            </div>
           </div>
 
-          <div class="p-4 bg-slate-950/80 rounded-xl border border-slate-800 space-y-2">
-            <h4 class="font-bold text-cyan-400 text-sm">Agent 3 &amp; 4: ABCD Visual Cues &amp; Patient Context</h4>
-            <p class="text-slate-300">Maps lesion contour and computes compactness \(P^2 / 4\pi A\), radial distance variance, and asymmetry index across horizontal/vertical folds.</p>
-            <ul class="list-disc list-inside text-slate-400 space-y-1">
-              <li>Border Compactness &gt; 1.6: Flagged as Irregular Border</li>
-              <li>Asymmetry &gt; 0.40: Flagged as Marked Asymmetry</li>
-              <li>Context Age &gt; 65 + Scalp/Face Site: High Risk demographic prior</li>
-            </ul>
+          <!-- Agent 2 Card Brief -->
+          <div class="p-4 bg-slate-950/80 rounded-xl border border-slate-800 space-y-2.5">
+            <div class="flex items-center gap-2 text-indigo-400 font-bold">
+              <i class="fa-solid fa-dna"></i>
+              <span>Agent 2: Diagnosis Agent</span>
+            </div>
+            <p class="text-slate-300 leading-relaxed">
+              Predicts one of the 7 permitted HAM10000 disease codes (`mel`, `nv`, `bcc`, `akiec`, `bkl`, `df`, `vasc`).
+            </p>
+            <div class="bg-slate-900 p-2.5 rounded-lg border border-slate-800 font-mono text-[10px] space-y-1">
+              <div>• <strong>Backbone:</strong> EfficientNet-B0 (1280-dim representations)</div>
+              <div>• <strong>Certainty:</strong> Top-1 vs. Top-2 separation margin</div>
+              <div>• <strong>Cumulative Risk:</strong> \(P(\text{mel}) + P(\text{bcc}) + P(\text{akiec})\)</div>
+              <div>• <strong>Rule:</strong> Always predicts even if image is RE_IMAGE</div>
+            </div>
           </div>
 
-          <div class="p-4 bg-slate-950/80 rounded-xl border border-slate-800 space-y-2">
-            <h4 class="font-bold text-rose-400 text-sm">Agent 5: Safety Sentinel &amp; Veto Rules</h4>
-            <p class="text-slate-300">Cross-examines diagnosis with visual cues and patient context to prevent dangerous automated discharges.</p>
-            <ul class="list-disc list-inside text-slate-400 space-y-1">
-              <li>Diagnosis = Benign, but Irregular Border / Asymmetry: VETOS AUTO_TRIAGE</li>
-              <li>Diagnosis = Benign, but High-Risk Context (Elderly scalp/face): VETOS AUTO_TRIAGE</li>
-              <li>Sub-threshold Malignancy Prob (Mel + BCC &gt; 28%): VETOS AUTO_TRIAGE</li>
-            </ul>
+          <!-- Agent 3 Card Brief -->
+          <div class="p-4 bg-slate-950/80 rounded-xl border border-slate-800 space-y-2.5">
+            <div class="flex items-center gap-2 text-amber-400 font-bold">
+              <i class="fa-solid fa-draw-polygon"></i>
+              <span>Agent 3: Lesion Analysis Agent</span>
+            </div>
+            <p class="text-slate-300 leading-relaxed">
+              Extracts dermatological ABCD structural cues independently of CNN probability weights.
+            </p>
+            <div class="bg-slate-900 p-2.5 rounded-lg border border-slate-800 font-mono text-[10px] space-y-1">
+              <div>• <strong>Asymmetry (A):</strong> 0 to 2 reflection non-overlap axes</div>
+              <div>• <strong>Border (B):</strong> 0 to 8 octants &amp; compactness \(P^2/4\pi A\)</div>
+              <div>• <strong>Color (C):</strong> 1 to 6 dermoscopic pigment shades</div>
+              <div>• <strong>TDS Formulation:</strong> \(1.3A + 0.1B + 0.5C + 0.5D\)</div>
+            </div>
           </div>
 
-          <div class="p-4 bg-slate-950/80 rounded-xl border border-slate-800 space-y-2">
-            <h4 class="font-bold text-emerald-400 text-sm">Agent 6: Coordinator Master Policy</h4>
-            <p class="text-slate-300">Applies strict precedence order to determine final action and explanation:</p>
-            <ul class="list-disc list-inside text-slate-400 space-y-1">
-              <li>IF Quality = RE_IMAGE &rarr; Action = RE_IMAGE (Preserving diagnosis)</li>
-              <li>ELSE IF Predicted Class in {mel, bcc, akiec} OR Safety Veto &rarr; Action = REFER</li>
-              <li>ELSE IF Confidence &ge; Auto Threshold AND Clear Safety &rarr; Action = AUTO_TRIAGE</li>
-              <li>ELSE &rarr; Action = REFER (Conservative uncertainty escalation)</li>
-            </ul>
+          <!-- Agent 4 Card Brief -->
+          <div class="p-4 bg-slate-950/80 rounded-xl border border-slate-800 space-y-2.5">
+            <div class="flex items-center gap-2 text-purple-400 font-bold">
+              <i class="fa-solid fa-brain"></i>
+              <span>Agent 4: Reasoning / Context Agent</span>
+            </div>
+            <p class="text-slate-300 leading-relaxed">
+              Incorporates patient demographics and anatomical site priors into clinical risk assessment.
+            </p>
+            <div class="bg-slate-900 p-2.5 rounded-lg border border-slate-800 font-mono text-[10px] space-y-1">
+              <div>• <strong>Age:</strong> Solar elastosis &amp; incidence stratification</div>
+              <div>• <strong>Sex:</strong> Male head/neck/trunk risk predisposition</div>
+              <div>• <strong>Site:</strong> Chronic UV (head/neck) vs. intermittent (torso)</div>
+              <div>• <strong>Missing Fields:</strong> Traceable flags &amp; confidence penalty</div>
+            </div>
           </div>
+
+          <!-- Agent 5 Card Brief -->
+          <div class="p-4 bg-slate-950/80 rounded-xl border border-slate-800 space-y-2.5">
+            <div class="flex items-center gap-2 text-rose-400 font-bold">
+              <i class="fa-solid fa-shield-halved"></i>
+              <span>Agent 5: Safety Agent (Sentinel)</span>
+            </div>
+            <p class="text-slate-300 leading-relaxed">
+              Enforces 'Primum Non Nocere'. Audits diagnosis against ABCD morphometry and patient context to veto unsafe decisions.
+            </p>
+            <div class="bg-slate-900 p-2.5 rounded-lg border border-slate-800 font-mono text-[10px] space-y-1">
+              <div>• <strong>Rule S1:</strong> Malignant class code &rarr; Immediate Veto</div>
+              <div>• <strong>Rule S2:</strong> Residual Malignancy Prob &ge; 28% &rarr; Veto</div>
+              <div>• <strong>Rule S3:</strong> Benign Dx vs. High TDS &rarr; Structural Veto</div>
+              <div>• <strong>Rule S4:</strong> Benign Dx vs. Elderly UV Site &rarr; Context Veto</div>
+            </div>
+          </div>
+
+          <!-- Agent 6 Card Brief -->
+          <div class="p-4 bg-slate-950/80 rounded-xl border border-slate-800 space-y-2.5">
+            <div class="flex items-center gap-2 text-cyan-400 font-bold">
+              <i class="fa-solid fa-diagram-project"></i>
+              <span>Agent 6: Coordinator Agent</span>
+            </div>
+            <p class="text-slate-300 leading-relaxed">
+              Applies a deterministic decision matrix to synthesize all signals into a finalized disposition.
+            </p>
+            <div class="bg-slate-900 p-2.5 rounded-lg border border-slate-800 font-mono text-[10px] space-y-1">
+              <div>• <strong>Action 1:</strong> RE_IMAGE (Quality inadequate)</div>
+              <div>• <strong>Action 2:</strong> REFER (Malignancy, Veto, Uncertainty)</div>
+              <div>• <strong>Action 3:</strong> AUTO_TRIAGE (Verified Benign)</div>
+              <div>• <strong>Traceable Chain:</strong> Complete evidence string</div>
+            </div>
+          </div>
+
         </div>
       </div>
     </div>
 
     <!-- TAB 3: BENCHMARK DASHBOARD -->
     <div id="content-benchmark" class="hidden space-y-6">
-      <div class="glass-panel rounded-2xl p-6 border border-slate-800 space-y-6">
-        <div class="flex justify-between items-center">
+      <div class="glass-card rounded-2xl p-6 border border-slate-800 space-y-6">
+        <div class="flex flex-wrap justify-between items-center gap-3">
           <div>
-            <h3 class="text-xl font-bold text-white">Validation Benchmark Performance</h3>
-            <p class="text-xs text-slate-400 mt-1">Evaluated across all held-out validation images from the official HAM10000 evaluation partition.</p>
+            <h3 class="text-xl font-bold text-white">Six-Agent Validation Benchmark Performance</h3>
+            <p class="text-xs text-slate-400 mt-1">Evaluated across all 1,942 held-out validation images from the official HAM10000 evaluation partition.</p>
           </div>
-          <span class="text-xs font-mono px-3 py-1 rounded bg-slate-800 text-cyan-400 border border-slate-700">1,942 Validation Samples</span>
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-mono px-3 py-1 rounded bg-slate-800 text-cyan-400 border border-slate-700">1,942 Validation Samples</span>
+            <a href="/api/download-submission-sample" download="final_submission_format_sample.csv" class="inline-flex items-center gap-2 px-3 py-1 rounded bg-cyan-950 text-cyan-300 border border-cyan-800 text-xs font-mono font-bold hover:bg-cyan-900 transition">
+              <i class="fa-solid fa-file-csv"></i> Download Official CSV
+            </a>
+          </div>
         </div>
 
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -555,8 +665,9 @@
             <span class="text-2xl font-black text-purple-400">0.5516</span>
           </div>
           <div class="p-4 bg-slate-950 rounded-xl border border-slate-800">
-            <span class="text-xs text-slate-400 block mb-1">Weighted F1-Score</span>
-            <span class="text-2xl font-black text-blue-400">0.7254</span>
+            <span class="text-xs text-slate-400 block mb-1">Auto-Triage Safety Precision</span>
+            <span class="text-2xl font-black text-emerald-400">93.7%</span>
+            <span class="text-[10px] text-slate-500 block">134 correct / 9 incorrect</span>
           </div>
         </div>
 
@@ -574,7 +685,7 @@
             </thead>
             <tbody class="divide-y divide-slate-800 text-slate-200">
               <tr><td class="p-3 text-cyan-400 font-bold">mel</td><td class="p-3 font-sans">Melanoma (Malignant)</td><td class="p-3">37.08%</td><td class="p-3">66.36%</td><td class="p-3">0.4757</td><td class="p-3">214</td></tr>
-              <tr><td class="p-3 text-cyan-400 font-bold">nv</td><td class="p-3 font-sans">Melanocytic nevus (Benign Mole)</td><td class="p-3">96.62%</td><td class="p-3">74.58%</td><td class="p-3">0.8418</td><td class="p-3">1302</td></tr>
+              <tr><td class="p-3 text-cyan-400 font-bold">nv</td><td class="p-3 font-sans">Melanocytic nevus (Benign Mole)</td><td class="p-3">96.62%</td><td class="p-3">74.58%</td><td class="p-3">0.8418</td><td class="p-3">1,302</td></tr>
               <tr><td class="p-3 text-cyan-400 font-bold">bcc</td><td class="p-3 font-sans">Basal cell carcinoma (Malignant)</td><td class="p-3">39.47%</td><td class="p-3">59.41%</td><td class="p-3">0.4743</td><td class="p-3">101</td></tr>
               <tr><td class="p-3 text-cyan-400 font-bold">akiec</td><td class="p-3 font-sans">Actinic keratoses (Pre-Malignant)</td><td class="p-3">40.78%</td><td class="p-3">66.67%</td><td class="p-3">0.5060</td><td class="p-3">63</td></tr>
               <tr><td class="p-3 text-cyan-400 font-bold">bkl</td><td class="p-3 font-sans">Benign keratosis</td><td class="p-3">47.75%</td><td class="p-3">50.00%</td><td class="p-3">0.4885</td><td class="p-3">212</td></tr>
@@ -588,10 +699,10 @@
 
     <!-- TAB 4: SUMMIT API SUBMISSION -->
     <div id="content-submit" class="hidden space-y-6">
-      <div class="glass-panel rounded-2xl p-6 border border-slate-800 space-y-6">
+      <div class="glass-card rounded-2xl p-6 border border-slate-800 space-y-6">
         <div>
           <h3 class="text-xl font-bold text-white">Summit API Submission Client</h3>
-          <p class="text-xs text-slate-400 mt-1">Submit your finalized multi-agent benchmark payload to the organizers' endpoint.</p>
+          <p class="text-xs text-slate-400 mt-1">Submit your finalized multi-agent benchmark payload or CSV file to the organizers' endpoint.</p>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -657,7 +768,7 @@
         conf: 0.88,
         isMalignant: true,
         quality: { blur: 89.2, light: 78.4, glare: 96.0, occl: 68.2, overall: 83.0 },
-        lesion: { asym: 0.68, border: 2.15, color: 0.72, suspicion: 0.78, level: "SUSPICIOUS" },
+        lesion: { asym: 2, border: 6, color: 4, suspicion: 0.82, level: "SUSPICIOUS", tds: 6.25 },
         probs: { "mel": 0.88, "nv": 0.04, "bcc": 0.04, "akiec": 0.02, "bkl": 0.01, "df": 0.005, "vasc": 0.005 }
       },
       nevus: {
@@ -666,7 +777,7 @@
         conf: 0.84,
         isMalignant: false,
         quality: { blur: 91.5, light: 82.1, glare: 94.8, occl: 64.2, overall: 83.2 },
-        lesion: { asym: 0.22, border: 1.25, color: 0.18, suspicion: 0.21, level: "BENIGN_CUES" },
+        lesion: { asym: 0, border: 1, color: 1, suspicion: 0.21, level: "BENIGN_CUES", tds: 3.42 },
         probs: { "mel": 0.03, "nv": 0.84, "bcc": 0.02, "akiec": 0.02, "bkl": 0.06, "df": 0.02, "vasc": 0.01 }
       },
       bcc: {
@@ -675,7 +786,7 @@
         conf: 0.81,
         isMalignant: true,
         quality: { blur: 86.0, light: 79.5, glare: 92.0, occl: 60.1, overall: 79.4 },
-        lesion: { asym: 0.52, border: 1.75, color: 0.44, suspicion: 0.62, level: "SUSPICIOUS" },
+        lesion: { asym: 1, border: 5, color: 3, suspicion: 0.65, level: "SUSPICIOUS", tds: 5.48 },
         probs: { "mel": 0.05, "nv": 0.04, "bcc": 0.81, "akiec": 0.05, "bkl": 0.03, "df": 0.01, "vasc": 0.01 }
       },
       akiec: {
@@ -684,7 +795,7 @@
         conf: 0.76,
         isMalignant: true,
         quality: { blur: 84.1, light: 75.0, glare: 91.0, occl: 58.0, overall: 77.0 },
-        lesion: { asym: 0.48, border: 1.62, color: 0.41, suspicion: 0.55, level: "SUSPICIOUS" },
+        lesion: { asym: 1, border: 4, color: 2, suspicion: 0.58, level: "SUSPICIOUS", tds: 5.12 },
         probs: { "mel": 0.04, "nv": 0.04, "bcc": 0.08, "akiec": 0.76, "bkl": 0.06, "df": 0.01, "vasc": 0.01 }
       },
       bkl: {
@@ -693,7 +804,7 @@
         conf: 0.79,
         isMalignant: false,
         quality: { blur: 88.0, light: 80.2, glare: 93.0, occl: 62.0, overall: 80.8 },
-        lesion: { asym: 0.35, border: 1.38, color: 0.32, suspicion: 0.36, level: "INDETERMINATE" },
+        lesion: { asym: 1, border: 2, color: 2, suspicion: 0.36, level: "INDETERMINATE", tds: 4.15 },
         probs: { "mel": 0.03, "nv": 0.08, "bcc": 0.03, "akiec": 0.04, "bkl": 0.79, "df": 0.02, "vasc": 0.01 }
       },
       df: {
@@ -702,7 +813,7 @@
         conf: 0.75,
         isMalignant: false,
         quality: { blur: 87.0, light: 77.0, glare: 94.0, occl: 61.0, overall: 79.8 },
-        lesion: { asym: 0.25, border: 1.30, color: 0.22, suspicion: 0.26, level: "BENIGN_CUES" },
+        lesion: { asym: 0, border: 1, color: 2, suspicion: 0.26, level: "BENIGN_CUES", tds: 3.65 },
         probs: { "mel": 0.02, "nv": 0.12, "bcc": 0.02, "akiec": 0.02, "bkl": 0.05, "df": 0.75, "vasc": 0.02 }
       },
       vasc: {
@@ -711,8 +822,17 @@
         conf: 0.89,
         isMalignant: false,
         quality: { blur: 90.0, light: 81.0, glare: 92.5, occl: 65.0, overall: 82.1 },
-        lesion: { asym: 0.20, border: 1.22, color: 0.25, suspicion: 0.22, level: "BENIGN_CUES" },
+        lesion: { asym: 0, border: 1, color: 2, suspicion: 0.22, level: "BENIGN_CUES", tds: 3.20 },
         probs: { "mel": 0.01, "nv": 0.04, "bcc": 0.02, "akiec": 0.01, "bkl": 0.01, "df": 0.02, "vasc": 0.89 }
+      },
+      conflict_case: {
+        name: "Melanocytic nevus",
+        code: "nv",
+        conf: 0.78,
+        isMalignant: false,
+        quality: { blur: 86.0, light: 78.0, glare: 92.0, occl: 60.0, overall: 79.0 },
+        lesion: { asym: 1, border: 3, color: 2, suspicion: 0.42, level: "INDETERMINATE", tds: 4.45 },
+        probs: { "mel": 0.12, "nv": 0.78, "bcc": 0.04, "akiec": 0.02, "bkl": 0.02, "df": 0.01, "vasc": 0.01 }
       },
       blur_defect: {
         name: "Blur Defect",
@@ -720,7 +840,7 @@
         conf: 0.52,
         isMalignant: false,
         quality: { blur: 24.0, light: 65.0, glare: 88.0, occl: 45.0, overall: 55.5 },
-        lesion: { asym: 0.45, border: 1.55, color: 0.35, suspicion: 0.48, level: "INDETERMINATE" },
+        lesion: { asym: 1, border: 4, color: 2, suspicion: 0.48, level: "INDETERMINATE", tds: 4.80 },
         probs: { "mel": 0.10, "nv": 0.52, "bcc": 0.08, "akiec": 0.06, "bkl": 0.14, "df": 0.05, "vasc": 0.05 }
       },
       glare_defect: {
@@ -729,17 +849,8 @@
         conf: 0.48,
         isMalignant: false,
         quality: { blur: 68.0, light: 70.0, glare: 42.0, occl: 50.0, overall: 57.5 },
-        lesion: { asym: 0.40, border: 1.45, color: 0.40, suspicion: 0.45, level: "INDETERMINATE" },
+        lesion: { asym: 1, border: 3, color: 2, suspicion: 0.45, level: "INDETERMINATE", tds: 4.60 },
         probs: { "mel": 0.08, "nv": 0.48, "bcc": 0.10, "akiec": 0.08, "bkl": 0.16, "df": 0.05, "vasc": 0.05 }
-      },
-      occl_defect: {
-        name: "Off-Center Defect",
-        code: "bkl",
-        conf: 0.55,
-        isMalignant: false,
-        quality: { blur: 72.0, light: 68.0, glare: 85.0, occl: 28.0, overall: 63.2 },
-        lesion: { asym: 0.55, border: 1.80, color: 0.38, suspicion: 0.58, level: "SUSPICIOUS" },
-        probs: { "mel": 0.12, "nv": 0.20, "bcc": 0.06, "akiec": 0.04, "bkl": 0.55, "df": 0.02, "vasc": 0.01 }
       }
     };
 
@@ -768,7 +879,7 @@
           maintainAspectRatio: false,
           plugins: { legend: { display: false } },
           scales: {
-            x: { grid: { display: false }, ticks: { font: { family: 'JetBrains Mono', size: 10 }, color: '#94a3b8' } },
+            x: { grid: { display: false }, ticks: { font: { family: 'JetBrains Mono', size: 9 }, color: '#94a3b8' } },
             y: { min: 0, max: 1, grid: { color: '#1e293b' }, ticks: { display: false } }
           }
         }
@@ -844,7 +955,7 @@
       const predName = res.prediction_name || a6.prediction_name || a2.predicted_class || "Melanocytic nevus";
       const conf = res.confidence !== undefined ? res.confidence : (a2.confidence || 0.7);
 
-      // Save base64 overlays for view switcher
+      // Save base64 overlays
       if (a3.edge_map_b64) mappedEdgesSrc = a3.edge_map_b64;
       if (a1.edge_map_b64) sharpnessMapSrc = a1.edge_map_b64;
 
@@ -856,44 +967,44 @@
       const badgeTag = document.getElementById('decision-badge-tag');
 
       if (decision === 'AUTO_TRIAGE') {
-        banner.className = 'rounded-2xl p-6 border-2 shadow-xl bg-slate-900 border-emerald-500/80';
-        iconWrap.className = 'w-12 h-12 rounded-xl flex items-center justify-center text-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/30';
+        banner.className = 'rounded-2xl p-5 border-2 shadow-xl bg-slate-900/90 border-emerald-500/80';
+        iconWrap.className = 'w-12 h-12 rounded-xl flex items-center justify-center text-2xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/40';
         icon.className = 'fa-solid fa-circle-check';
         title.className = 'text-3xl font-black text-emerald-400 tracking-tight mt-0.5';
         title.innerText = 'AUTO_TRIAGE';
-        badgeTag.className = 'text-[10px] font-bold px-2 py-0.5 rounded font-mono bg-emerald-950 text-emerald-400 border border-emerald-800';
-        badgeTag.innerText = 'Routine Follow-up';
+        badgeTag.className = 'text-[10px] font-bold px-2 py-0.5 rounded font-mono bg-emerald-950 text-emerald-300 border border-emerald-800';
+        badgeTag.innerText = 'Routine Follow-up Approved';
       } else if (decision === 'REFER') {
-        banner.className = 'rounded-2xl p-6 border-2 shadow-xl bg-slate-900 border-rose-500/80';
-        iconWrap.className = 'w-12 h-12 rounded-xl flex items-center justify-center text-2xl bg-rose-500/10 text-rose-400 border border-rose-500/30';
+        banner.className = 'rounded-2xl p-5 border-2 shadow-xl bg-slate-900/90 border-rose-500/80';
+        iconWrap.className = 'w-12 h-12 rounded-xl flex items-center justify-center text-2xl bg-rose-500/15 text-rose-400 border border-rose-500/40';
         icon.className = 'fa-solid fa-user-doctor';
         title.className = 'text-3xl font-black text-rose-400 tracking-tight mt-0.5';
         title.innerText = 'REFER';
-        badgeTag.className = 'text-[10px] font-bold px-2 py-0.5 rounded font-mono bg-rose-950 text-rose-400 border border-rose-800';
-        badgeTag.innerText = 'Specialist Review';
+        badgeTag.className = 'text-[10px] font-bold px-2 py-0.5 rounded font-mono bg-rose-950 text-rose-300 border border-rose-800';
+        badgeTag.innerText = 'Specialist Evaluation Required';
       } else {
-        banner.className = 'rounded-2xl p-6 border-2 shadow-xl bg-slate-900 border-amber-500/80';
-        iconWrap.className = 'w-12 h-12 rounded-xl flex items-center justify-center text-2xl bg-amber-500/10 text-amber-400 border border-amber-500/30';
+        banner.className = 'rounded-2xl p-5 border-2 shadow-xl bg-slate-900/90 border-amber-500/80';
+        iconWrap.className = 'w-12 h-12 rounded-xl flex items-center justify-center text-2xl bg-amber-500/15 text-amber-400 border border-amber-500/40';
         icon.className = 'fa-solid fa-triangle-exclamation';
         title.className = 'text-3xl font-black text-amber-400 tracking-tight mt-0.5';
         title.innerText = 'RE_IMAGE';
-        badgeTag.className = 'text-[10px] font-bold px-2 py-0.5 rounded font-mono bg-amber-950 text-amber-400 border border-amber-800';
-        badgeTag.innerText = 'Capture Inadequate';
+        badgeTag.className = 'text-[10px] font-bold px-2 py-0.5 rounded font-mono bg-amber-950 text-amber-300 border border-amber-800';
+        badgeTag.innerText = 'Capture Defect / Re-Capture';
       }
 
       document.getElementById('pred-code-badge').innerText = predCode;
       document.getElementById('pred-conf-badge').innerText = (conf * 100).toFixed(1) + '%';
       document.getElementById('pred-name-text').innerText = predName;
 
-      // Traceable Chain
+      // Official Summit Traceable Chain
       document.getElementById('decision-traceable-chain').innerText =
         res.traceable_chain || a6.traceable_chain ||
         `A1: ${a1.status || 'PASS'} | A2: ${predCode} • ${conf.toFixed(2)} | A3+A4: ${a3.suspicion_level || 'CUES'} | A5: ${a5.safety_flag || 'PASS'} | A6: ${decision}`;
 
       document.getElementById('decision-explanation').innerText =
-        res.traceable_rationale || a6.rationale || res.explanation || "Clinical disposition determined by six-agent policy.";
+        res.traceable_rationale || a6.rationale || a6.action_justification || res.explanation || "Clinical disposition determined by six-agent policy.";
 
-      // A1 card
+      // A1 Quality Card
       document.getElementById('a1-status-pill').innerText = a1.status || 'PASS';
       document.getElementById('criteria-indicator-pill').innerText = 'Quality: ' + (a1.status || 'PASS');
       document.getElementById('a1-blur').innerText = (a1.blur_score || 0).toFixed(1);
@@ -903,11 +1014,14 @@
       document.getElementById('bar-blur').style.width = Math.min(100, a1.blur_score || 0) + '%';
       document.getElementById('bar-light').style.width = Math.min(100, a1.lighting_score || 0) + '%';
 
-      // A2 card
-      document.getElementById('a2-conf').innerText = (conf * 100).toFixed(1) + '%';
+      // A2 Diagnosis Card
+      document.getElementById('a2-conf').innerText = (conf * 100).toFixed(1) + '% Primary';
       const isMalig = ['mel', 'bcc', 'akiec'].includes(predCode);
       document.getElementById('a2-risk-tag').innerText = `${predCode} • ${isMalig ? 'High Risk' : 'Low Risk'}`;
-      document.getElementById('a2-risk-tag').className = `text-[10px] font-bold px-2 py-0.5 rounded-full ${isMalig ? 'bg-rose-950 text-rose-400 border border-rose-800' : 'bg-emerald-950 text-emerald-400 border border-emerald-800'}`;
+      document.getElementById('a2-risk-tag').className = `text-[10px] font-bold px-2 py-0.5 rounded-full font-mono ${isMalig ? 'bg-rose-950 text-rose-400 border border-rose-800' : 'bg-emerald-950 text-emerald-400 border border-emerald-800'}`;
+
+      const margin = a2.margin_to_next !== undefined ? a2.margin_to_next : (conf - 0.15);
+      document.getElementById('a2-margin').innerText = '+' + Number(margin).toFixed(2);
 
       const probs = a2.all_probabilities || {};
       const probVals = [
@@ -924,37 +1038,40 @@
         probChart.update();
       }
 
-      // A3 card
-      const fe = a3.feature_evidence || {};
-      const asym = fe.asymmetry ? fe.asymmetry.score : (a3.suspicion_score || 0.25);
-      const border = fe.border_irregularity ? (fe.border_irregularity.details ? fe.border_irregularity.details.compactness : 1.25) : 1.25;
-      const color = fe.color_variation ? fe.color_variation.score : 0.22;
-      document.getElementById('a3-asym').innerText = Number(asym).toFixed(2);
-      document.getElementById('a3-border').innerText = Number(border).toFixed(2);
-      document.getElementById('a3-color').innerText = Number(color).toFixed(2);
-      document.getElementById('a3-suspicion-tag').innerText = a3.suspicion_level || 'BENIGN CUES';
+      // A3 ABCD Morphometry Card
+      const abcd = a3.abcd_breakdown || {};
+      const asymPts = abcd.A_asymmetry ? abcd.A_asymmetry.axis_score : (a3.asym_pts || 0);
+      const borderPts = abcd.B_border ? abcd.B_border.border_score : (a3.border_pts || 1);
+      const colorCnt = abcd.C_color ? abcd.C_color.color_count : 1;
+      const tds = a3.tds_score || 3.42;
+
+      document.getElementById('a3-asym').innerText = `${asymPts} / 2 Axes`;
+      document.getElementById('a3-border').innerText = `${borderPts} / 8 Score`;
+      document.getElementById('a3-color').innerText = `${colorCnt} / 6 Colors`;
+      document.getElementById('a3-tds-tag').innerText = `TDS: ${tds.toFixed(2)}`;
       document.getElementById('a3-summary').innerText = a3.summary || 'Lesion visual cues analyzed under clinical ABCD guidelines.';
 
-      // A4 card
+      // A4 Context Card
       document.getElementById('a4-risk-tag').innerText = (a4.risk_indicator || 'LOW') + ' RISK';
       document.getElementById('a4-score').innerText = (a4.risk_score || 0.25).toFixed(2) + ' / 1.0';
       const mFlags = a4.missing_field_flags || [];
-      document.getElementById('a4-missing').innerText = mFlags.length + ' Flags';
+      const comp = a4.completeness_percentage !== undefined ? a4.completeness_percentage : 100;
+      document.getElementById('a4-missing').innerText = `${comp}% (${mFlags.length} Flags)`;
       const ctxEv = a4.context_evidence || [];
       document.getElementById('a4-evidence').innerText = ctxEv[0] || 'Patient demographics evaluated for age and anatomical prior.';
 
-      // A5 card
+      // A5 Safety Card
       document.getElementById('a5-flag-pill').innerText = a5.safety_flag || 'PASS';
-      document.getElementById('a5-flag-pill').className = `text-[10px] font-bold px-2 py-0.5 rounded-full ${a5.veto_auto_triage ? 'bg-rose-950 text-rose-400 border border-rose-800' : 'bg-emerald-950 text-emerald-400 border border-emerald-800'}`;
+      document.getElementById('a5-flag-pill').className = `text-[10px] font-bold px-2 py-0.5 rounded-full font-mono ${a5.veto_auto_triage ? 'bg-rose-950 text-rose-400 border border-rose-800' : 'bg-emerald-950 text-emerald-400 border border-emerald-800'}`;
       document.getElementById('a5-veto-status').innerText = a5.veto_auto_triage ? 'ACTIVE (Vetoed)' : 'NONE (Safe)';
       document.getElementById('a5-veto-status').className = `font-bold ${a5.veto_auto_triage ? 'text-rose-400' : 'text-emerald-400'}`;
       document.getElementById('a5-trigger').innerText = a5.primary_trigger || 'None Detected';
       document.getElementById('a5-justification').innerText = a5.justification || 'No cross-agent clinical conflicts detected.';
 
-      // A6 card
-      document.getElementById('a6-rule-name').innerText = a6.policy_rule || 'Documented Consensus Policy';
+      // A6 Coordinator Card
+      document.getElementById('a6-rule-name').innerText = a6.policy_rule ? a6.policy_rule.split(':')[0] : 'Consensus Policy';
       document.getElementById('a6-action-code').innerText = decision;
-      document.getElementById('a6-audit-trail').innerText = a6.rationale || res.traceable_rationale || 'Decision logged with traceable justification.';
+      document.getElementById('a6-audit-trail').innerText = a6.action_justification || a6.rationale || res.traceable_rationale || 'Decision logged with traceable justification.';
     }
 
     function executeAnalysis() {
@@ -970,7 +1087,6 @@
         localization: document.getElementById('ctx-loc').value
       };
 
-      // Query serverless API
       fetch('/api/triage', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -982,7 +1098,7 @@
       })
       .then(res => res.json())
       .then(data => {
-        btn.innerHTML = '<i class="fa-solid fa-stethoscope"></i> Execute Six-Agent Screening &amp; Triage';
+        btn.innerHTML = '<i class="fa-solid fa-stethoscope"></i> Execute Six-Agent Consensus Screening';
         btn.disabled = false;
         if (data && data.final_decision) {
           renderSixAgents(data);
@@ -991,7 +1107,7 @@
         }
       })
       .catch(err => {
-        btn.innerHTML = '<i class="fa-solid fa-stethoscope"></i> Execute Six-Agent Screening &amp; Triage';
+        btn.innerHTML = '<i class="fa-solid fa-stethoscope"></i> Execute Six-Agent Consensus Screening';
         btn.disabled = false;
         fallbackClientExecution(th, ctx);
       });
@@ -1004,8 +1120,9 @@
       const q = base.quality;
       const isReimage = (q.overall < th.quality_cutoff) || (q.blur < th.blur_threshold && q.glare < th.glare_threshold);
       
+      // Clinical conflict simulation: e.g. elderly male with scalp lesion
       const isHighRiskCtx = (ctx.age && ctx.age >= 65 && ['scalp', 'face', 'ear', 'back'].includes(ctx.localization));
-      const hasConflict = base.code === 'nv' && (base.lesion.suspicion >= 0.55 || isHighRiskCtx);
+      const hasConflict = (base.code === 'nv' && (base.lesion.tds > 5.0 || isHighRiskCtx || caseKey === 'conflict_case'));
       const isVetoed = base.isMalignant || hasConflict || (base.conf < th.auto_triage_confidence);
 
       let decision = "REFER";
@@ -1017,7 +1134,7 @@
         prediction: base.code,
         prediction_name: base.name,
         confidence: base.conf,
-        traceable_chain: `A1: ${isReimage ? 'RE_IMAGE' : 'PASS'} | A2: ${base.code} • ${base.conf.toFixed(2)} | A3+A4: ${base.lesion.level} | A5: ${hasConflict ? 'SAFETY_FLAG' : 'PASS'} | A6: ${decision}`,
+        traceable_chain: `A1: ${isReimage ? 'RE_IMAGE' : 'PASS'} | A2: ${base.code} • ${base.conf.toFixed(2)} | A3+A4: ${hasConflict ? 'SUSPICIOUS' : base.lesion.level} | A5: ${hasConflict ? 'SAFETY_VETO' : (base.isMalignant ? 'SAFETY_VETO' : 'PASS')} | A6: ${decision}`,
         traceable_rationale: `Six-agent coordination: ${decision === 'AUTO_TRIAGE' ? 'Verified benign lesion with no safety flags.' : (decision === 'RE_IMAGE' ? 'Image quality defect requires re-capture.' : 'Specialist referral triggered due to risk/conflict checks.')}`,
         agents: {
           A1_quality: {
@@ -1032,36 +1149,40 @@
             predicted_code: base.code,
             predicted_class: base.name,
             confidence: base.conf,
+            margin_to_next: 0.68,
             all_probabilities: base.probs
           },
           A3_lesion_analysis: {
             suspicion_score: base.lesion.suspicion,
             suspicion_level: base.lesion.level,
-            summary: `ABCD cues: Asymmetry ${base.lesion.asym}, Border compactness ${base.lesion.border}.`,
-            feature_evidence: {
-              asymmetry: { score: base.lesion.asym },
-              border_irregularity: { details: { compactness: base.lesion.border } },
-              color_variation: { score: base.lesion.color }
+            tds_score: base.lesion.tds,
+            summary: `ABCD Morphometry: TDS=${base.lesion.tds.toFixed(2)}. Asymmetry=${base.lesion.asym}/2 axes, Border=${base.lesion.border}/8 octants, Color=${base.lesion.color}/6 shades.`,
+            abcd_breakdown: {
+              A_asymmetry: { axis_score: base.lesion.asym },
+              B_border: { border_score: base.lesion.border },
+              C_color: { color_count: base.lesion.color }
             }
           },
           A4_context_reasoning: {
             risk_indicator: isHighRiskCtx ? 'HIGH' : (ctx.age >= 50 ? 'MODERATE' : 'LOW'),
             risk_score: isHighRiskCtx ? 0.75 : 0.25,
+            completeness_percentage: 100,
             missing_field_flags: [],
-            context_evidence: [`Patient age ${ctx.age || 50} at site '${ctx.localization || 'back'}'.`]
+            context_evidence: [`Patient age ${ctx.age || 54} at site '${ctx.localization || 'back'}'. ${isHighRiskCtx ? 'High UV chronic exposure site mandates clinical biopsy consideration.' : 'Standard anatomical site.'}`]
           },
           A5_safety: {
-            safety_flag: hasConflict ? 'SAFETY_FLAG' : (base.isMalignant ? 'SAFETY_VETO' : 'PASS'),
+            safety_flag: (hasConflict || base.isMalignant) ? 'SAFETY_VETO' : 'PASS',
             veto_auto_triage: isVetoed,
-            primary_trigger: hasConflict ? 'DIAGNOSIS_VS_CONTEXT_CONFLICT' : (base.isMalignant ? 'PREDICTED_MALIGNANCY' : 'NONE'),
+            primary_trigger: hasConflict ? 'RULE_S4:DIAGNOSIS_VS_DEMOGRAPHIC_DISCORDANCE' : (base.isMalignant ? 'RULE_S1:PREDICTED_MALIGNANCY' : 'NONE'),
             justification: hasConflict ? 'Patient demographics or lesion border conflict with automated benign triage.' : 'Cross-agent verification complete.'
           },
           A6_coordinator: {
             decision: decision,
             prediction: base.code,
             prediction_name: base.name,
-            policy_rule: decision === 'AUTO_TRIAGE' ? 'Rule 5 (Verified Benign)' : (decision === 'RE_IMAGE' ? 'Rule 1 (Quality Gate)' : 'Rule 3 (Safety Veto / Malignancy)'),
-            rationale: `Autonomous coordination determined action ${decision} for predicted class ${base.code}.`
+            policy_rule: decision === 'AUTO_TRIAGE' ? 'Policy Rule 5: Verified Benign' : (decision === 'RE_IMAGE' ? 'Policy Rule 1: Quality Gate' : 'Policy Rule 3: Safety Veto'),
+            action_justification: `Autonomous coordination determined action ${decision} for predicted class ${base.code}.`,
+            rationale: `Six-agent coordination finalized action ${decision} for predicted code ${base.code}.`
           }
         }
       };
@@ -1076,22 +1197,25 @@
       canvas.height = 224;
       const ctx = canvas.getContext('2d');
 
-      // Draw synthetic realistic dermoscopy textures
-      ctx.fillStyle = '#b48c78';
+      // Realistic skin base
+      ctx.fillStyle = '#b68e7a';
       ctx.fillRect(0, 0, 224, 224);
 
       if (caseKey === 'melanoma') {
-        ctx.fillStyle = '#2a1a15';
+        ctx.fillStyle = '#221511';
         ctx.beginPath();
         ctx.moveTo(70, 75);
-        ctx.bezierCurveTo(40, 110, 80, 175, 130, 165);
-        ctx.bezierCurveTo(180, 155, 175, 95, 135, 70);
-        ctx.bezierCurveTo(105, 50, 85, 60, 70, 75);
+        ctx.bezierCurveTo(35, 110, 75, 180, 130, 168);
+        ctx.bezierCurveTo(185, 155, 178, 90, 135, 68);
+        ctx.bezierCurveTo(105, 48, 85, 58, 70, 75);
         ctx.fill();
-        ctx.fillStyle = '#150a06';
+        ctx.fillStyle = '#100604';
         ctx.beginPath();
-        ctx.arc(105, 115, 28, 0, Math.PI * 2);
+        ctx.arc(105, 115, 26, 0, Math.PI * 2);
         ctx.fill();
+        document.getElementById('ctx-age').value = 62;
+        document.getElementById('ctx-sex').value = 'male';
+        document.getElementById('ctx-loc').value = 'back';
       } else if (caseKey === 'nevus') {
         ctx.fillStyle = '#5c3826';
         ctx.beginPath();
@@ -1101,6 +1225,21 @@
         ctx.beginPath();
         ctx.arc(112, 112, 28, 0, Math.PI * 2);
         ctx.fill();
+        document.getElementById('ctx-age').value = 32;
+        document.getElementById('ctx-sex').value = 'female';
+        document.getElementById('ctx-loc').value = 'abdomen';
+      } else if (caseKey === 'conflict_case') {
+        ctx.fillStyle = '#5c3826';
+        ctx.beginPath();
+        ctx.arc(112, 112, 42, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#422517';
+        ctx.beginPath();
+        ctx.arc(112, 112, 28, 0, Math.PI * 2);
+        ctx.fill();
+        document.getElementById('ctx-age').value = 78;
+        document.getElementById('ctx-sex').value = 'male';
+        document.getElementById('ctx-loc').value = 'scalp';
       } else if (caseKey === 'vasc') {
         ctx.fillStyle = '#991b1b';
         ctx.beginPath();
@@ -1110,14 +1249,27 @@
         ctx.beginPath();
         ctx.arc(108, 108, 22, 0, Math.PI * 2);
         ctx.fill();
+        document.getElementById('ctx-age').value = 45;
+        document.getElementById('ctx-sex').value = 'male';
+        document.getElementById('ctx-loc').value = 'trunk';
+      } else if (caseKey === 'blur_defect') {
+        // Out-of-focus optical motion blur: smooth diffuse radial gradient with zero sharp micro-edges
+        const grad = ctx.createRadialGradient(112, 112, 10, 112, 112, 90);
+        grad.addColorStop(0, '#7a5745');
+        grad.addColorStop(0.3, '#8e6b57');
+        grad.addColorStop(0.65, '#a6806c');
+        grad.addColorStop(1, '#b68e7a');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, 224, 224);
       } else if (caseKey === 'glare_defect') {
         ctx.fillStyle = '#5c3826';
         ctx.beginPath();
-        ctx.arc(112, 112, 42, 0, Math.PI * 2);
+        ctx.arc(112, 112, 44, 0, Math.PI * 2);
         ctx.fill();
-        ctx.fillStyle = '#ffffff';
+        // Specular reflection artifact (pure white flash spot)
+        ctx.fillStyle = '#fbfcfe';
         ctx.beginPath();
-        ctx.arc(112, 112, 26, 0, Math.PI * 2);
+        ctx.ellipse(112, 112, 38, 26, Math.PI / 4, 0, Math.PI * 2);
         ctx.fill();
       } else {
         ctx.fillStyle = '#6b4226';
@@ -1152,7 +1304,7 @@
       document.getElementById('tab-' + tabId).classList.add('border-cyan-400', 'text-cyan-400');
       document.getElementById('tab-' + tabId).classList.remove('border-transparent', 'text-slate-400');
 
-      ['screening', 'criteria', 'benchmark', 'submit'].forEach(t => {
+      ['screening', 'explanation', 'benchmark', 'submit'].forEach(t => {
         document.getElementById('content-' + t).classList.add('hidden');
       });
       document.getElementById('content-' + tabId).classList.remove('hidden');
@@ -1200,7 +1352,6 @@
       });
     }
 
-    // Initialize on load
     window.onload = function() {
       initChart();
       onSelectCase();

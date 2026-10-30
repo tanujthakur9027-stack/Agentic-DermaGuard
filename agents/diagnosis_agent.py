@@ -4,7 +4,6 @@ from typing import Dict, Tuple, List, Optional, Any
 from pathlib import Path
 import json
 
-# Check for PyTorch availability
 try:
     import torch
     import torch.nn as nn
@@ -15,7 +14,6 @@ try:
 except ImportError:
     HAVE_TORCH = False
 
-# Official 7 HAM10000 lesion class codes
 IDX_TO_CODE = {
     0: 'mel',    # Melanoma
     1: 'nv',     # Melanocytic nevus
@@ -48,12 +46,18 @@ CODE_TO_NAME = {
     'vasc': 'Vascular lesion'
 }
 
+CLINICAL_DESCRIPTIONS = {
+    'mel': "Malignant Melanoma: High-risk neuroectodermal malignancy characterized by atypical pigment network, irregular globules, and potential for deep invasion. Urgent surgical excision/biopsy required.",
+    'nv': "Melanocytic Nevus: Benign melanocytic proliferation with symmetrical pigment architecture and regular peripheral borders. Routine primary care surveillance recommended.",
+    'bcc': "Basal Cell Carcinoma: Locally invasive non-melanocytic epidermal malignancy often presenting with arborizing telangiectasia, blue-gray ovoid nests, or ulceration.",
+    'akiec': "Actinic Keratoses / Intraepithelial Carcinoma: Pre-malignant keratinocytic dysplasia with rough scaly texture caused by chronic solar damage. Cryotherapy or topical field therapy indicated.",
+    'bkl': "Benign Keratosis: Seborrheic keratosis or lichen-planus like lesion presenting milia-like cysts or fingerprint-like ridges. Benign natural course.",
+    'df': "Dermatofibroma: Benign fibrohistiocytic dermal nodule with characteristic central white scar-like patch and delicate peripheral pigment network.",
+    'vasc': "Vascular Lesion: Benign hemangioma, angiokeratoma, or pyogenic granuloma exhibiting prominent red-purple lacunae without melanocytic atypia."
+}
+
 if HAVE_TORCH:
     class DiagnosisNeuralNet(nn.Module):
-        """
-        Multi-class skin lesion classifier based on EfficientNet-B0
-        Fine-tuned for the 7 HAM10000 lesion classes
-        """
         def __init__(self, num_classes: int = 7):
             super(DiagnosisNeuralNet, self).__init__()
             self.num_classes = num_classes
@@ -91,27 +95,44 @@ else:
 
 class DiagnosisAgent:
     """
-    Agent 2: Diagnosis Agent
-    Predicts one of the 7 permitted lesion classes:
+    Agent 2: Diagnosis Agent (7 HAM10000 Pathology Classifier)
+    Jaypee Agentic AI Summit 2026 — Track 2 | Healthcare
+
+    Predicts one of 7 official lesion classes:
       - nv: Melanocytic nevus
       - mel: Melanoma
-      - bkl: Benign keratosis
       - bcc: Basal cell carcinoma
       - akiec: Actinic keratoses
-      - vasc: Vascular lesion
+      - bkl: Benign keratosis
       - df: Dermatofibroma
-    Outputs:
-      - predicted_code: Official short code for submission (e.g. 'nv')
-      - predicted_class: Full clinical name
-      - confidence: Primary prediction probability
-      - all_probabilities: Dictionary of probabilities
-      - top_3: Ranked candidates
+      - vasc: Vascular lesion
+    Provides:
+      - Predicted official class code & clinical disease name
+      - Confidence score & 7-class probability distribution
+      - Diagnostic certainty level & top-2 separation margin
+      - Cumulative malignancy suspicion (mel + bcc + akiec)
+      - Clinical pathology summary
     """
 
     def __init__(self, model_path: str = "models/diagnosis_agent.pt"):
         self.model_path = model_path
         self.torch_model = None
         self.have_weights = False
+        self.lightweight_weights = None
+
+        # Load learned lightweight weights for serverless fallback
+        lw_paths = [
+            Path("models/lightweight_weights.json"),
+            Path(__file__).parent.parent / "models" / "lightweight_weights.json"
+        ]
+        for p in lw_paths:
+            if p.exists():
+                try:
+                    with open(p, "r") as f:
+                        self.lightweight_weights = json.load(f)
+                    break
+                except Exception:
+                    pass
 
         if HAVE_TORCH:
             try:
@@ -129,73 +150,144 @@ class DiagnosisAgent:
                 self.torch_model = None
                 self.have_weights = False
 
-    def predict_numpy_fallback(self, pil_img: Image.Image) -> Dict[str, Any]:
-        """
-        Pure NumPy dermoscopic feature classifier fallback when PyTorch is unavailable.
-        Uses calibrated color, luminance, and texture variance signatures.
-        """
-        img_rgb = pil_img.convert('RGB').resize((224, 224))
-        arr = np.array(img_rgb, dtype=np.float32)
-        r, g, b = arr[:, :, 0], arr[:, :, 1], arr[:, :, 2]
-
-        mean_r, mean_g, mean_b = float(r.mean()), float(g.mean()), float(b.mean())
-        std_r, std_g, std_b = float(r.std()), float(g.std()), float(b.std())
-        color_std = (std_r + std_g + std_b) / 3.0
-
-        # Vascular erythema
-        vasc_ratio = mean_r / (mean_g + mean_b + 1e-5)
-        # Melanin darkness
-        dark_melanin = float(np.sum((r < 80) & (g < 60) & (b < 60)) / arr.size)
-        # Pink translucency (BCC)
-        pink_trans = float(np.sum((r > 165) & (g > 115) & (b > 115) & (r > g + 25)) / arr.size)
-        # Texture roughness (AKIEC/BKL)
-        gray = np.array(pil_img.convert('L').resize((224, 224)), dtype=np.float32)
-        roughness = float(np.abs(gray[1:, :] - gray[:-1, :]).mean())
-
-        raw_scores = {
-            'mel': max(0.05, (dark_melanin * 16.0) + (color_std / 40.0) * 0.45),
-            'nv': max(0.20, 0.85 - (color_std / 65.0) * 0.4 - (dark_melanin * 3.5)),
-            'bcc': max(0.04, (pink_trans * 12.0) + 0.12),
-            'akiec': max(0.03, (roughness / 28.0) * 0.45 + 0.05),
-            'bkl': max(0.05, (roughness / 24.0) * 0.4 + (color_std / 55.0) * 0.25),
-            'df': 0.08,
-            'vasc': max(0.02, (vasc_ratio - 0.52) * 6.0) if vasc_ratio > 0.55 else 0.03
-        }
-
-        codes = ['mel', 'nv', 'bcc', 'akiec', 'bkl', 'df', 'vasc']
-        score_arr = np.array([raw_scores[c] for c in codes])
-        exp_s = np.exp(score_arr * 2.8)
-        probs = exp_s / exp_s.sum()
-
+    def _package_prediction(self, probs: np.ndarray) -> Dict[str, Any]:
+        codes = [IDX_TO_CODE[i] for i in range(7)]
         pred_idx = int(np.argmax(probs))
         pred_code = codes[pred_idx]
         confidence = float(probs[pred_idx])
 
-        all_probs_code = {c: round(float(probs[i]), 4) for i, c in enumerate(codes)}
-        all_probs_name = {CODE_TO_NAME[c]: all_probs_code[c] for c in codes}
+        # Sort candidate probabilities
+        sorted_indices = np.argsort(probs)[::-1]
+        top_3 = [
+            (codes[i], CODE_TO_NAME[codes[i]], round(float(probs[i]), 4))
+            for i in sorted_indices[:3]
+        ]
 
-        top_3 = sorted(
-            [(c, CODE_TO_NAME[c], all_probs_code[c]) for c in codes],
-            key=lambda x: x[2],
-            reverse=True
-        )[:3]
+        # Separation margin between top-1 and top-2
+        second_prob = float(probs[sorted_indices[1]])
+        margin = round(confidence - second_prob, 4)
+
+        if margin >= 0.35:
+            certainty = "HIGH_CERTAINTY"
+        elif margin >= 0.15:
+            certainty = "MODERATE_CERTAINTY"
+        else:
+            certainty = "DIFFERENTIAL_AMBIGUITY"
+
+        # Cumulative malignancy suspicion (mel + bcc + akiec)
+        mel_p = float(probs[CODE_TO_IDX['mel']])
+        bcc_p = float(probs[CODE_TO_IDX['bcc']])
+        akiec_p = float(probs[CODE_TO_IDX['akiec']])
+        cum_malig = round(mel_p + bcc_p + akiec_p, 4)
+
+        all_probs_code = {codes[i]: round(float(probs[i]), 4) for i in range(7)}
+        all_probs_name = {CODE_TO_NAME[codes[i]]: all_probs_code[codes[i]] for i in range(7)}
+
+        is_malignant = pred_code in {'mel', 'bcc', 'akiec'}
 
         return {
+            'agent_id': 'A2',
+            'agent_name': 'Diagnosis Agent',
             'predicted_code': pred_code,
             'predicted_class': CODE_TO_NAME[pred_code],
-            'predicted_idx': CODE_TO_IDX[pred_code],
+            'predicted_idx': pred_idx,
             'confidence': round(confidence, 4),
+            'margin_to_next': margin,
+            'diagnostic_certainty': certainty,
+            'cumulative_malignancy_risk': cum_malig,
+            'is_malignant': is_malignant,
             'all_probabilities': all_probs_code,
             'all_probabilities_by_name': all_probs_name,
-            'top_3': top_3
+            'top_3': top_3,
+            'clinical_description': CLINICAL_DESCRIPTIONS.get(pred_code, ""),
+            'summary': f"Pathology predicted as '{CODE_TO_NAME[pred_code]}' [{pred_code}] with {confidence*100:.1f}% confidence ({certainty}, margin: {margin:.2f})."
         }
 
+    def predict_numpy_fallback(self, pil_img: Image.Image) -> Dict[str, Any]:
+        """Learned feature statistical classifier fallback when PyTorch weights are unavailable."""
+        img_rgb = pil_img.convert('RGB').resize((128, 128))
+        arr = np.array(img_rgb, dtype=np.float32) / 255.0
+        r, g, b = arr[:, :, 0], arr[:, :, 1], arr[:, :, 2]
+
+        if self.lightweight_weights is not None:
+            try:
+                # 1. Color moments
+                mean_r, mean_g, mean_b = float(r.mean()), float(g.mean()), float(b.mean())
+                std_r, std_g, std_b = float(r.std()), float(g.std()), float(b.std())
+
+                # 2. HSV saturation and value
+                v = np.max(arr, axis=2)
+                min_rgb = np.min(arr, axis=2)
+                delta = v - min_rgb
+                sat = np.where(v > 1e-4, delta / (v + 1e-5), 0.0)
+                mean_sat, std_sat = float(sat.mean()), float(sat.std())
+                mean_v, std_v = float(v.mean()), float(v.std())
+
+                # 3. Pathological cues
+                dark_melanin = float(np.sum((r < 0.32) & (g < 0.24) & (b < 0.24)) / arr.size)
+                red_ratio = float(np.sum((r > 0.55) & (r > 1.35 * (g + b) / 2.0)) / arr.size)
+                blue_gray = float(np.sum((b > g) & (b > r) & (sat > 0.15)) / arr.size)
+
+                # 4. Center vs periphery contrast
+                h, w = r.shape
+                c_y, c_x = h // 4, w // 4
+                center_patch = arr[c_y:h-c_y, c_x:w-c_x]
+                outer_mask = np.ones((h, w), dtype=bool)
+                outer_mask[c_y:h-c_y, c_x:w-c_x] = False
+                contrast = float(np.linalg.norm(center_patch.mean(axis=(0, 1)) - arr[outer_mask].mean(axis=0)))
+
+                # 5. Roughness
+                gray = 0.299 * r + 0.587 * g + 0.114 * b
+                roughness = float(np.mean(np.abs(gray[1:, :] - gray[:-1, :])) + np.mean(np.abs(gray[:, 1:] - gray[:, :-1])))
+
+                feats = np.array([
+                    mean_r, mean_g, mean_b,
+                    std_r, std_g, std_b,
+                    mean_sat, std_sat,
+                    mean_v, std_v,
+                    dark_melanin, red_ratio, blue_gray,
+                    contrast, roughness
+                ], dtype=np.float32)
+
+                # Standardize & forward pass through linear layer
+                scaler_mean = np.array(self.lightweight_weights['scaler_mean'])
+                scaler_scale = np.array(self.lightweight_weights['scaler_scale'])
+                coef = np.array(self.lightweight_weights['coef'])
+                intercept = np.array(self.lightweight_weights['intercept'])
+
+                feats_scaled = (feats - scaler_mean) / (scaler_scale + 1e-6)
+                logits = np.dot(coef, feats_scaled) + intercept
+                
+                exp_l = np.exp(logits - np.max(logits))
+                probs = exp_l / np.sum(exp_l)
+                return self._package_prediction(probs)
+            except Exception:
+                pass
+
+        # Heuristic fallback if lightweight weights fail to evaluate
+        mean_r, mean_g, mean_b = float(r.mean()*255.0), float(g.mean()*255.0), float(b.mean()*255.0)
+        std_r, std_g, std_b = float(r.std()*255.0), float(g.std()*255.0), float(b.std()*255.0)
+        color_std = (std_r + std_g + std_b) / 3.0
+        vasc_ratio = mean_r / (mean_g + mean_b + 1e-5)
+        dark_melanin = float(np.sum((r < 0.31) & (g < 0.24) & (b < 0.24)) / arr.size)
+        
+        raw_scores = {
+            'mel': max(0.05, (dark_melanin * 12.0) + (color_std / 45.0) * 0.4),
+            'nv': max(0.20, 0.80 - (color_std / 60.0) * 0.35 - (dark_melanin * 2.5)),
+            'bcc': max(0.04, 0.15 if mean_r > 160 and mean_g > 120 else 0.05),
+            'akiec': max(0.03, (color_std / 50.0) * 0.3 + 0.05),
+            'bkl': max(0.05, 0.35 if mean_r < 140 else 0.1),
+            'df': 0.08,
+            'vasc': max(0.02, (vasc_ratio - 0.52) * 5.0) if vasc_ratio > 0.55 else 0.03
+        }
+        codes = ['mel', 'nv', 'bcc', 'akiec', 'bkl', 'df', 'vasc']
+        score_arr = np.array([raw_scores[c] for c in codes])
+        exp_s = np.exp(score_arr * 2.5)
+        probs = exp_s / exp_s.sum()
+        return self._package_prediction(probs)
+
     def predict(self, image_input: Any) -> Dict[str, Any]:
-        """
-        Runs diagnostic prediction.
-        Accepts PIL Image, image file path, or torch.Tensor.
-        Always returns official predicted_code, predicted_class, confidence, probabilities.
-        """
+        """Executes diagnostic inference on image input."""
         if isinstance(image_input, str):
             pil_img = Image.open(image_input).convert('RGB')
         elif isinstance(image_input, Image.Image):
@@ -218,32 +310,10 @@ class DiagnosisAgent:
                     logits = self.torch_model(tensor)
                     probs = F.softmax(logits, dim=1).cpu().numpy()[0]
 
-                pred_idx = int(np.argmax(probs))
-                pred_code = IDX_TO_CODE[pred_idx]
-                confidence = float(probs[pred_idx])
-
-                all_probs_code = {IDX_TO_CODE[i]: round(float(probs[i]), 4) for i in range(7)}
-                all_probs_name = {IDX_TO_NAME[i]: round(float(probs[i]), 4) for i in range(7)}
-
-                top_3 = sorted(
-                    [(IDX_TO_CODE[i], IDX_TO_NAME[i], round(float(probs[i]), 4)) for i in range(7)],
-                    key=lambda x: x[2],
-                    reverse=True
-                )[:3]
-
-                return {
-                    'predicted_code': pred_code,
-                    'predicted_class': IDX_TO_NAME[pred_idx],
-                    'predicted_idx': pred_idx,
-                    'confidence': round(confidence, 4),
-                    'all_probabilities': all_probs_code,
-                    'all_probabilities_by_name': all_probs_name,
-                    'top_3': top_3
-                }
+                return self._package_prediction(probs)
             except Exception:
                 pass
 
-        # Fallback to pure numpy dermoscopic feature extraction
         if pil_img is None:
             pil_img = Image.new('RGB', (224, 224), (180, 140, 120))
         return self.predict_numpy_fallback(pil_img)

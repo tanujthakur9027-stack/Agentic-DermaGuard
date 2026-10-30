@@ -3,7 +3,7 @@
   "track": "Track 2 | Healthcare",
   "project": "Agentic DermaGuard (Six-Agent System)",
   "stage": "Level 2 / Day 2 Multi-Agent Evaluation",
-  "evaluation_timestamp": "2026-10-30T22:18:32Z",
+  "evaluation_timestamp": "2026-10-30T22:36:29Z",
   "total_eval_samples": 1942,
   "classification_metrics": {
     "overall_accuracy": 0.6982,
@@ -130,14 +130,14 @@
     ]
   },
   "live_demo_reporting_counts": {
-    "correct_auto_triage": 132,
-    "incorrect_auto_triage": 4,
-    "number_of_refers": 1654,
+    "correct_auto_triage": 134,
+    "incorrect_auto_triage": 9,
+    "number_of_refers": 1647,
     "number_of_re_image": 152,
     "triage_distribution": {
-      "REFER": 1654,
+      "REFER": 1647,
       "RE_IMAGE": 152,
-      "AUTO_TRIAGE": 136
+      "AUTO_TRIAGE": 143
     }
   },
   "six_agent_summary": {
@@ -154,27 +154,27 @@
       }
     },
     "A3_lesion_analysis": {
-      "mean_suspicion_score": 0.78,
+      "mean_suspicion_score": 0.64,
       "suspicion_levels": {
-        "SUSPICIOUS": 1761,
-        "INDETERMINATE": 167,
-        "BENIGN_CUES": 14
+        "SUSPICIOUS": 962,
+        "BENIGN_CUES": 493,
+        "INDETERMINATE": 487
       }
     },
     "A4_context_reasoning": {
       "risk_levels": {
-        "HIGH": 894,
-        "MODERATE": 872,
-        "LOW": 176
+        "MODERATE": 1058,
+        "HIGH": 551,
+        "LOW": 333
       }
     },
     "A5_safety": {
       "safety_flags": {
-        "SAFETY_VETO": 1782,
-        "PASS": 139,
-        "SAFETY_FLAG": 21
+        "SAFETY_VETO": 1738,
+        "PASS": 146,
+        "SAFETY_FLAG": 58
       },
-      "vetoes_triggered": 1803
+      "vetoes_triggered": 1796
     }
   }
 }

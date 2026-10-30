@@ -1,7 +1,7 @@
 # Level 2 / Day 2 Evaluation Summary: Six-Agent DermaGuard
 
 **Jaypee Agentic AI International Summit 2026 — Track 2 | Healthcare**
-**Evaluation Date:** 30 October 2026 22:18:32
+**Evaluation Date:** 30 October 2026 22:36:29
 
 ---
 
@@ -16,9 +16,9 @@
 ### Triage Disposition Counts
 | Triage Disposition | Count | Percentage | Description |
 |---|---|---|---|
-| **Correct AUTO_TRIAGE** | 132 | 6.8% | Automated screening matches ground truth label |
-| **Incorrect AUTO_TRIAGE** | 4 | 0.2% | Automated screening misclassified |
-| **Number of REFERS** | 1654 | 85.2% | Suspicion, diagnostic uncertainty, or safety veto |
+| **Correct AUTO_TRIAGE** | 134 | 6.9% | Automated screening matches ground truth label |
+| **Incorrect AUTO_TRIAGE** | 9 | 0.5% | Automated screening misclassified |
+| **Number of REFERS** | 1647 | 84.8% | Suspicion, diagnostic uncertainty, or safety veto |
 | **Number of RE_IMAGE** | 152 | 7.8% | Inadequate capture quality (blur/glare/centering) |
 
 ---
@@ -41,9 +41,9 @@
 
 - **Agent 1 (Image Quality):** Mean Quality: 76.49/100. Status: {'ACCEPTABLE': 1177, 'ACCEPTABLE_WITH_CAUTION': 613, 'RE_IMAGE': 152}
 - **Agent 2 (Diagnosis):** Evaluated all 1942 images across all 7 permitted classes.
-- **Agent 3 (Lesion Analysis ABCD):** Mean Suspicion Score: 0.780.
+- **Agent 3 (Lesion Analysis ABCD):** Mean Suspicion Score: 0.640.
 - **Agent 4 (Reasoning / Context):** Stratified by age, sex, and anatomical localization.
-- **Agent 5 (Safety Sentinel):** Vetoes Triggered: 1803 unsafe autonomous discharges blocked.
+- **Agent 5 (Safety Sentinel):** Vetoes Triggered: 1796 unsafe autonomous discharges blocked.
 - **Agent 6 (Coordinator):** Applied deterministic precedence policy ensuring explainability and audit traceability.
 
 ---

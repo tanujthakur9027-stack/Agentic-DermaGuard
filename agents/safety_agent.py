@@ -3,21 +3,18 @@ from typing import Dict, Any, List
 class SafetyAgent:
     """
     Agent 5: Safety Agent (Clinical Safety Sentinel & Veto)
-    Reviews outputs across all prior agents:
-      - Agent 1: Image Quality
-      - Agent 2: Diagnosis & Probabilities
-      - Agent 3: Lesion Visual Cues (ABCD)
-      - Agent 4: Reasoning / Context
-    Detects:
-      - Conflicts between diagnostic classification and visual cues (e.g., nv with jagged borders)
-      - Demographic contradictions (e.g., elderly patient sun-damaged site with benign diagnosis)
-      - Unsafe automatic triage attempts on compromised images
-      - Probability margin ambiguity
+    Jaypee Agentic AI Summit 2026 — Track 2 | Healthcare
+
+    Performs rigorous cross-agent safety auditing:
+      - Reviews diagnosis against ABCD structural cues, patient demographics, and capture quality.
+      - Blocks unsafe autonomous discharge (AUTO_TRIAGE) whenever clinical conflict or risk is detected.
+      - Enforces the 'Primum Non Nocere' (First, do no harm) principle in medical AI.
     Provides:
       - safety_flag: PASS | SAFETY_FLAG | SAFETY_VETO
-      - veto_auto_triage: bool (blocks AUTO_TRIAGE if True)
-      - trigger: specific rule/conflict that fired
-      - justification: clinical rationale for panel inspection
+      - veto_auto_triage: bool (strictly forbids AUTO_TRIAGE if True)
+      - active_conflicts: List of specific discordance items
+      - primary_trigger: Root rule that fired
+      - justification: Medical rationale formatted for audit panel inspection
     """
 
     def __init__(self):
@@ -32,6 +29,7 @@ class SafetyAgent:
     ) -> Dict[str, Any]:
         veto = False
         triggers = []
+        conflicts = []
         justifications = []
 
         # Extract findings
@@ -43,89 +41,127 @@ class SafetyAgent:
         mel_p = probs.get("mel", probs.get("Melanoma", 0.0))
         bcc_p = probs.get("bcc", probs.get("Basal cell carcinoma", 0.0))
         akiec_p = probs.get("akiec", probs.get("Actinic keratoses", 0.0))
-        total_malignancy_risk = mel_p + bcc_p + akiec_p
+        total_malignancy_risk = round(mel_p + bcc_p + akiec_p, 4)
 
         quality_status = quality_data.get("status", "ACCEPTABLE")
         triggered_defects = quality_data.get("triggered_criteria", [])
 
         lesion_suspicion = lesion_data.get("suspicion_score", 0.0)
-        lesion_level = lesion_data.get("suspicion_level", "BENIGN_CUES")
-        evidence = lesion_data.get("feature_evidence", {})
-        border_status = evidence.get("border_irregularity", {}).get("status", "REGULAR")
-        asym_status = evidence.get("asymmetry", {}).get("status", "SYMMETRIC")
+        tds_score = lesion_data.get("tds_score", 3.5)
+        abcd = lesion_data.get("abcd_breakdown", {})
+        border_pts = abcd.get("B_border", {}).get("border_score", 1)
+        asym_pts = abcd.get("A_asymmetry", {}).get("axis_score", 0)
 
         context_risk = context_data.get("risk_indicator", "LOW")
         parsed_fields = context_data.get("parsed_fields", {})
         age = parsed_fields.get("age")
         loc = parsed_fields.get("localization")
 
-        # --- Rule 1: Direct Malignancy Detection ---
+        # --- Rule S1: Direct Malignancy Detection ---
         if pred_code in {'mel', 'bcc', 'akiec'} or pred_class in self.malignant_classes:
             veto = True
-            triggers.append("PREDICTED_MALIGNANCY")
+            triggers.append("RULE_S1:PREDICTED_MALIGNANCY")
+            conflicts.append({
+                "type": "MALIGNANCY_PRESENTATION",
+                "severity": "CRITICAL",
+                "detail": f"Pathology predicted as '{pred_class}' [{pred_code}] ({confidence*100:.1f}% confidence)."
+            })
             justifications.append(
                 f"Model predicts malignant/pre-malignant pathology '{pred_class}' ({confidence*100:.1f}% confidence). "
-                f"Automated triage is strictly contraindicated; immediate specialist referral mandated."
+                f"Automated triage strictly contraindicated; immediate specialist biopsy/dermatology referral mandated."
             )
 
-        # --- Rule 2: Sub-threshold Malignancy Suspicion ---
+        # --- Rule S2: Cumulative Malignancy Residual Probability ---
         elif total_malignancy_risk >= 0.28:
             veto = True
-            triggers.append("ELEVATED_MALIGNANCY_RESIDUAL_PROBABILITY")
+            triggers.append("RULE_S2:ELEVATED_MALIGNANCY_RESIDUAL_PROBABILITY")
+            conflicts.append({
+                "type": "SUBTHRESHOLD_MALIGNANCY_RISK",
+                "severity": "HIGH",
+                "detail": f"Cumulative malignant probability {total_malignancy_risk*100:.1f}% exceeds 28% clinical threshold."
+            })
             justifications.append(
-                f"Although primary prediction is '{pred_class}', cumulative malignancy probability "
+                f"While primary candidate is '{pred_class}', cumulative malignancy probability "
                 f"is dangerously elevated ({total_malignancy_risk*100:.1f}%: Melanoma {mel_p*100:.1f}%, BCC {bcc_p*100:.1f}%, AKIEC {akiec_p*100:.1f}%). "
                 f"Safety veto blocks automated dismissal."
             )
 
-        # --- Rule 3: Conflict: Benign Diagnosis vs Suspicious ABCD Lesion Cues ---
-        if pred_code in {'nv', 'bkl', 'df', 'vasc'} and (lesion_suspicion >= 0.65 or (border_status == "IRREGULAR" and asym_status == "MARKED_ASYMMETRY")):
-            veto = True
-            triggers.append("DIAGNOSIS_VS_LESION_STRUCTURE_CONFLICT")
-            justifications.append(
-                f"Conflict detected: Diagnosis predicts benign '{pred_class}', but visual structural analysis reveals "
-                f"marked suspicion (score: {lesion_suspicion:.2f}, Border: {border_status}, Asymmetry: {asym_status}). "
-                f"High risk of missed amelanotic or atypical melanoma."
-            )
+        # --- Rule S3: Cross-Agent Conflict (Benign Diagnosis vs High ABCD Structural Score) ---
+        if pred_code in {'nv', 'bkl', 'df', 'vasc'}:
+            has_abcd_discordance = (tds_score > 5.20) or (border_pts >= 6 and asym_pts >= 1) or (lesion_suspicion >= 0.65)
+            if has_abcd_discordance:
+                veto = True
+                triggers.append("RULE_S3:DIAGNOSIS_VS_ABCD_STRUCTURE_DISCORDANCE")
+                conflicts.append({
+                    "type": "STRUCTURAL_DISCORDANCE",
+                    "severity": "HIGH",
+                    "detail": f"Diagnostic classifier predicts benign '{pred_code}', but ABCD analysis reveals elevated Total Dermoscopy Score (TDS={tds_score:.2f}) with {asym_pts} asymmetry axes and border score {border_pts}/8."
+                })
+                justifications.append(
+                    f"Structural conflict detected: Diagnosis predicts benign '{pred_class}', but lesion visual analysis reveals "
+                    f"concerning dermoscopic architecture (TDS: {tds_score:.2f}, Border: {border_pts}/8, Asymmetry: {asym_pts}/2). "
+                    f"Veto prevents missing atypical dysplastic nevi or early-stage melanomas."
+                )
 
-        # --- Rule 4: Conflict: Benign Diagnosis vs High-Risk Patient Demographics ---
+        # --- Rule S4: Cross-Agent Conflict (Benign Diagnosis vs High-Risk Patient Demographics) ---
         if pred_code in {'nv', 'bkl'} and context_risk == "HIGH" and confidence < 0.85:
             veto = True
-            triggers.append("DIAGNOSIS_VS_DEMOGRAPHIC_CONTEXT_CONFLICT")
+            triggers.append("RULE_S4:DIAGNOSIS_VS_DEMOGRAPHIC_CONTEXT_DISCORDANCE")
+            conflicts.append({
+                "type": "DEMOGRAPHIC_DISCORDANCE",
+                "severity": "MODERATE",
+                "detail": f"Benign nevus diagnosed in high-risk patient demographic (Age: {age if age else 'Unk'}, Site: '{loc if loc else 'Unk'}')."
+            })
             justifications.append(
-                f"Conflict detected: Automated benign diagnosis '{pred_class}' in high-risk demographic presentation "
-                f"(Age: {age if age else 'Unk'} at site: '{loc if loc else 'Unk'}'). New/changing lesions in this demographic "
-                f"carry high prior for lentigo maligna or squamous neoplasm."
+                f"Context conflict detected: Automated benign diagnosis '{pred_class}' in high-risk demographic presentation "
+                f"(Age: {age if age else 'Unk'} at chronic UV site: '{loc if loc else 'Unk'}'). New or evolving lesions in this group "
+                f"exhibit high prior for lentigo maligna or squamous cell carcinoma."
             )
 
-        # --- Rule 5: Borderline Image Quality Precaution ---
+        # --- Rule S5: Image Quality Precaution ---
         if quality_status == 'RE_IMAGE':
             veto = True
-            triggers.append("UNSAFE_ON_DEFECTIVE_IMAGE")
+            triggers.append("RULE_S5:UNSAFE_ON_DEFECTIVE_IMAGE")
+            conflicts.append({
+                "type": "QUALITY_FAILURE",
+                "severity": "CRITICAL",
+                "detail": f"Image quality gatekeeper failed capture ({', '.join(triggered_defects) if triggered_defects else 'Below threshold'})."
+            })
             justifications.append(
                 f"Image quality failed clinical acceptance (Status: RE_IMAGE; defects: {', '.join(triggered_defects)}). "
-                f"Automated triage completely invalid."
+                f"Automated triage invalid on compromised capture."
             )
         elif quality_status == 'ACCEPTABLE_WITH_CAUTION' and confidence < 0.70:
             veto = True
-            triggers.append("QUALITY_CAUTION_DISCHARGE_BLOCK")
+            triggers.append("RULE_S5:QUALITY_CAUTION_DISCHARGE_BLOCK")
+            conflicts.append({
+                "type": "QUALITY_CAUTION",
+                "severity": "LOW",
+                "detail": "Borderline capture quality combined with non-definitive confidence."
+            })
             justifications.append(
-                f"Image has quality caution ({', '.join(triggered_defects) if triggered_defects else 'Borderline sharpness/lighting'}) "
-                f"combined with non-definitive confidence ({confidence*100:.1f}%). Automated triage vetoed."
+                f"Image quality caution combined with borderline diagnostic confidence ({confidence*100:.1f}%). "
+                f"Specialist referral advised to prevent false reassurance."
             )
 
-        # --- Rule 6: Diagnostic Uncertainty ---
+        # --- Rule S6: Diagnostic Uncertainty ---
         if confidence < 0.65 and not veto:
             veto = True
-            triggers.append("DIAGNOSTIC_UNCERTAINTY")
+            triggers.append("RULE_S6:DIAGNOSTIC_UNCERTAINTY")
+            conflicts.append({
+                "type": "DIAGNOSTIC_UNCERTAINTY",
+                "severity": "MODERATE",
+                "detail": f"Top candidate confidence ({confidence*100:.1f}%) is below 65% autonomous safety threshold."
+            })
             justifications.append(
-                f"Primary diagnostic confidence ({confidence*100:.1f}%) is below safe autonomous threshold (65.0%). "
-                f"Requires human expert confirmation."
+                f"Diagnostic confidence ({confidence*100:.1f}%) is below safe autonomous threshold (65.0%). "
+                f"Requires clinical dermatologist evaluation to resolve differential ambiguity."
             )
 
-        # Determine flag level
+        # Determine flag severity
         if veto:
-            safety_flag = "SAFETY_VETO" if any("VETO" in t or "MALIGNANCY" in t or "CONFLICT" in t for t in triggers) else "SAFETY_FLAG"
+            is_critical = any(c.get("severity") == "CRITICAL" for c in conflicts) or any("S1" in t or "S3" in t for t in triggers)
+            safety_flag = "SAFETY_VETO" if is_critical else "SAFETY_FLAG"
         else:
             safety_flag = "PASS"
             justifications.append("Cross-agent audit passed: No diagnostic, structural, quality, or demographic conflicts detected.")
@@ -137,6 +173,8 @@ class SafetyAgent:
             "veto_auto_triage": veto,
             "triggers": triggers,
             "primary_trigger": triggers[0] if triggers else "NONE",
+            "active_conflicts": conflicts,
+            "total_conflicts": len(conflicts),
             "justification": " | ".join(justifications),
             "summary": (
                 f"[{safety_flag}] {triggers[0] if triggers else 'All checks clear'}: "

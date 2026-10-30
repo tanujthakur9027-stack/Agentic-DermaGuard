@@ -107,20 +107,28 @@ class ImageQualityAgent:
 
     def assess_glare(self, arr_rgb: np.ndarray) -> Tuple[float, str]:
         """
-        Detects specular glare / overexposure voids in HSV V-channel.
+        Detects specular glare / flash reflection voids.
+        Specular glare in dermoscopy is characterized by high brightness (V > 235)
+        accompanied by low color saturation (Sat < 0.18), distinguishing flash voids
+        from natural light skin tones.
         """
         v_channel = np.max(arr_rgb, axis=2)
-        overexposed_ratio = float(np.sum(v_channel > 240.0) / v_channel.size)
-        
-        # Penalty increases steeply with overexposed percentage
-        glare_score = round(max(0.0, 100.0 - (overexposed_ratio * 100.0 * 2.8)), 1)
+        min_channel = np.min(arr_rgb, axis=2)
+        sat = (v_channel - min_channel) / (v_channel + 1e-5)
+
+        specular_mask = (v_channel > 235.0) & (sat < 0.18)
+        specular_ratio = float(np.sum(specular_mask) / v_channel.size)
+
+        # Calibrated clinical penalty:
+        # > 3.5% specular coverage severely blinds core diagnostic structures
+        glare_score = round(max(0.0, 100.0 - (specular_ratio * 900.0)), 1)
 
         if glare_score >= 85:
             status = "NO_GLARE"
         elif glare_score >= self.glare_threshold:
             status = "MINIMAL_GLARE"
         else:
-            status = "GLARE_DETECTED"
+            status = "GLARE_DEFECT"
 
         return glare_score, status
 
@@ -215,21 +223,44 @@ class ImageQualityAgent:
             triggers.append(f"Occlusion ({occlusion_score:.1f} < {o_th:.1f})")
             reasoning.append(f"Lesion off-center or peripheral artifact ({occlusion_score:.1f} < {o_th:.1f}).")
 
-        if overall_quality < q_cutoff or len(triggers) >= 2:
+        # Track Rule: Any critical defect requires re-capture (RE_IMAGE)
+        is_blur_defect = blur_score < b_th
+        is_light_defect = lighting_score < l_th
+        is_glare_defect = glare_score < g_th
+        is_occl_defect = occlusion_score < o_th
+        is_low_overall = overall_quality < q_cutoff
+
+        if is_blur_defect or is_light_defect or is_glare_defect or is_occl_defect or is_low_overall or len(triggers) >= 2:
             status = "RE_IMAGE"
             if not reasoning:
                 reasoning.append(f"Composite quality below threshold ({overall_quality:.1f} < {q_cutoff:.1f}).")
-        elif overall_quality < 70.0 or len(triggers) == 1:
+        elif overall_quality < 72.0 or len(triggers) == 1:
             status = "ACCEPTABLE_WITH_CAUTION"
         else:
-            status = "ACCEPTABLE"
+            status = "PASS"
 
         if not reasoning:
             reasoning.append("Image quality fully acceptable for dermoscopic evaluation.")
 
-        # Generate edge gradient visualization map
-        norm_grad = np.clip((grad_mag / (np.percentile(grad_mag, 98) + 1e-5)) * 255.0, 0, 255).astype(np.uint8)
-        grad_img = Image.fromarray(norm_grad)
+        # Generate high-contrast edge & sharpness visualization map
+        p96 = float(np.percentile(grad_mag, 96) + 1e-5)
+        norm_edge = np.clip(grad_mag / p96, 0.0, 1.0)
+
+        # High-contrast edge heatmap:
+        # Dark obsidian navy for smooth background -> gold for mid edges -> electric cyan for sharp microstructures
+        vis_map = np.zeros((224, 224, 3), dtype=np.uint8)
+        # Red channel: highlights strong textures
+        vis_map[:, :, 0] = np.clip(14 + norm_edge * 120 + np.where(norm_edge > 0.6, (norm_edge - 0.6) * 200, 0), 0, 255).astype(np.uint8)
+        # Green channel: peaks on strong edge gradient
+        vis_map[:, :, 1] = np.clip(18 + norm_edge * 230, 0, 255).astype(np.uint8)
+        # Blue channel: high cyan component
+        vis_map[:, :, 2] = np.clip(32 + norm_edge * 220, 0, 255).astype(np.uint8)
+
+        # Blend subtle 20% original image texture into edge map for anatomical context
+        orig_arr = np.clip(arr_rgb, 0, 255).astype(np.uint8)
+        blended = np.clip(0.75 * vis_map.astype(np.float32) + 0.25 * orig_arr.astype(np.float32), 0, 255).astype(np.uint8)
+
+        grad_img = Image.fromarray(blended)
         buf = io.BytesIO()
         grad_img.save(buf, format="PNG")
         edge_map_b64 = "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode("utf-8")
