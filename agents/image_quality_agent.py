@@ -1,7 +1,15 @@
-import cv2
 import numpy as np
-from typing import Dict, Tuple
+from PIL import Image
+from typing import Dict, Tuple, List, Any
 from dataclasses import dataclass
+import io
+import base64
+
+try:
+    import cv2
+    HAVE_CV2 = True
+except ImportError:
+    HAVE_CV2 = False
 
 @dataclass
 class QualityMetrics:
@@ -12,166 +20,230 @@ class QualityMetrics:
     overall_quality: float
     status: str
     reasoning: list
+    triggered_criteria: list
+    edge_map_b64: str = ""
 
 class ImageQualityAgent:
     """
+    Agent 1: Image Quality Agent
     Evaluates skin lesion image quality across multiple dimensions:
-    - Blur detection (Laplacian variance)
-    - Lighting assessment (histogram uniformity)
-    - Glare detection (overexposed regions)
-    - Occlusion detection (edge coverage)
+      - Blur detection (Combined Laplacian variance & Tenengrad gradient)
+      - Lighting assessment (Histogram entropy & dynamic range)
+      - Specular glare detection (Saturated pixels in V-channel)
+      - Occlusion / Obstruction detection (Centering & border vignette)
+    Outputs:
+      - Quality status (PASS, ACCEPTABLE_WITH_CAUTION, RE_IMAGE)
+      - Quality scores (0-100)
+      - Defect trigger reasons
+      - Edge/sharpness visualization map
     """
-    
-    def __init__(self):
-        self.blur_threshold = 100
-        self.lighting_threshold = 0.3
-        self.glare_threshold = 0.15
-        self.occlusion_threshold = 0.2
-    
-    def assess_blur(self, image: np.ndarray) -> Tuple[float, str]:
+
+    def __init__(
+        self,
+        blur_threshold: float = 40.0,
+        lighting_threshold: float = 40.0,
+        glare_threshold: float = 70.0,
+        occlusion_threshold: float = 50.0,
+        quality_cutoff: float = 50.0
+    ):
+        self.blur_threshold = blur_threshold
+        self.lighting_threshold = lighting_threshold
+        self.glare_threshold = glare_threshold
+        self.occlusion_threshold = occlusion_threshold
+        self.quality_cutoff = quality_cutoff
+
+    def assess_blur(self, arr_gray: np.ndarray) -> Tuple[float, str, np.ndarray]:
         """
-        Calculate blur score using Laplacian variance.
-        Higher score = sharper image
+        Calculates blur score using Laplacian variance and edge gradient sharpness.
+        Higher score = sharper image.
+        Returns:
+          blur_score (0-100), status, and edge gradient map.
         """
-        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        laplacian_var = cv2.Laplacian(gray, cv2.CV_64F).var()
-        
-        # Normalize to 0-100 scale
-        blur_score = min(100, (laplacian_var / self.blur_threshold) * 100)
-        
-        if blur_score >= 70:
+        # Laplacian calculation via 2D convolution kernel
+        pad = np.pad(arr_gray, 1, mode='reflect')
+        lap = (pad[:-2, 1:-1] + pad[2:, 1:-1] + pad[1:-1, :-2] + pad[1:-1, 2:] - 4.0 * arr_gray)
+        lap_var = float(lap.var())
+
+        # Tenengrad gradient sharpness (Sobel operator)
+        gx = (pad[:-2, 2:] + 2*pad[1:-1, 2:] + pad[2:, 2:]) - (pad[:-2, :-2] + 2*pad[1:-1, :-2] + pad[2:, :-2])
+        gy = (pad[2:, :-2] + 2*pad[2:, 1:-1] + pad[2:, 2:]) - (pad[:-2, :-2] + 2*pad[:-2, 1:-1] + pad[:-2, 2:])
+        grad_mag = np.sqrt(gx**2 + gy**2)
+        tenengrad = float(np.mean(grad_mag**2))
+
+        # Composite sharpness metric: calibrated for dermoscopy
+        # In dermoscopy, sharp borders give lap_var >= 80, blurry images < 25
+        lap_component = min(100.0, (lap_var / 90.0) * 100.0)
+        grad_component = min(100.0, (tenengrad / 2500.0) * 100.0)
+        blur_score = round(0.6 * lap_component + 0.4 * grad_component, 1)
+
+        if blur_score >= 65:
             status = "SHARP"
-        elif blur_score >= 40:
+        elif blur_score >= self.blur_threshold:
             status = "ACCEPTABLE"
         else:
             status = "BLURRY"
-        
-        return blur_score, status
-    
-    def assess_lighting(self, image: np.ndarray) -> Tuple[float, str]:
+
+        return blur_score, status, grad_mag
+
+    def assess_lighting(self, arr_gray: np.ndarray) -> Tuple[float, str]:
         """
-        Assess lighting quality using histogram entropy.
-        Good lighting = well-distributed histogram
+        Evaluates illumination distribution and dynamic range using histogram entropy.
         """
-        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        hist = cv2.calcHist([gray], [0], None, [256], [0, 256])
-        hist = hist.flatten() / hist.sum()
+        counts, _ = np.histogram(arr_gray, bins=256, range=(0, 256))
+        p = counts / float(counts.sum() + 1e-8)
+        entropy = -float(np.sum(p * np.log2(p + 1e-8)))
         
-        # Calculate entropy
-        entropy = -np.sum(hist * np.log2(hist + 1e-8))
-        lighting_score = min(100, (entropy / 8) * 100)  # Max entropy is ~8
-        
+        # Max entropy for 256 bins is 8.0 bits
+        lighting_score = round(min(100.0, (entropy / 7.6) * 100.0), 1)
+
         if lighting_score >= 60:
             status = "OPTIMAL"
-        elif lighting_score >= 40:
+        elif lighting_score >= self.lighting_threshold:
             status = "ACCEPTABLE"
         else:
             status = "POOR_LIGHTING"
-        
+
         return lighting_score, status
-    
-    def assess_glare(self, image: np.ndarray) -> Tuple[float, str]:
+
+    def assess_glare(self, arr_rgb: np.ndarray) -> Tuple[float, str]:
         """
-        Detect glare/overexposed regions.
-        Glare = high intensity pixels > 240 in value channel
+        Detects specular glare / overexposure voids in HSV V-channel.
         """
-        hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-        v_channel = hsv[:, :, 2]
+        v_channel = np.max(arr_rgb, axis=2)
+        overexposed_ratio = float(np.sum(v_channel > 240.0) / v_channel.size)
         
-        # Calculate percentage of overexposed pixels
-        overexposed_ratio = np.sum(v_channel > 240) / v_channel.size
-        
-        glare_score = 100 - (overexposed_ratio * 100)
-        
+        # Penalty increases steeply with overexposed percentage
+        glare_score = round(max(0.0, 100.0 - (overexposed_ratio * 100.0 * 2.8)), 1)
+
         if glare_score >= 85:
             status = "NO_GLARE"
-        elif glare_score >= 70:
+        elif glare_score >= self.glare_threshold:
             status = "MINIMAL_GLARE"
         else:
             status = "GLARE_DETECTED"
-        
+
         return glare_score, status
-    
-    def assess_occlusion(self, image: np.ndarray) -> Tuple[float, str]:
+
+    def assess_occlusion(self, grad_mag: np.ndarray) -> Tuple[float, str]:
         """
-        Detect occlusion/obstruction using edge coverage.
-        Good images have lesion centered with minimal obstruction
+        Detects border obstruction, lens vignetting, and off-center placement.
+        Compares edge density in central active field vs extreme outer border band.
         """
-        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        edges = cv2.Canny(gray, 50, 150)
-        
-        # Check if edges are concentrated in center (not at borders)
+        edges = grad_mag > 28.0
         h, w = edges.shape
+
+        # Outer border band (outer 5% perimeter pixels)
+        b_margin = max(6, int(min(h, w) * 0.06))
+        mask_outer = np.zeros((h, w), dtype=bool)
+        mask_outer[:b_margin, :] = True
+        mask_outer[-b_margin:, :] = True
+        mask_outer[:, :b_margin] = True
+        mask_outer[:, -b_margin:] = True
+
+        # Central 75% field of view
+        c_margin_y = int(h * 0.125)
+        c_margin_x = int(w * 0.125)
         mask_center = np.zeros((h, w), dtype=bool)
-        mask_center[h//4:-h//4, w//4:-w//4] = True
-        
-        center_edges = np.sum((edges > 0) & mask_center)
-        border_edges = np.sum((edges > 0) & (~mask_center))
-        
-        total_edges = center_edges + border_edges + 1e-8
+        mask_center[c_margin_y:h - c_margin_y, c_margin_x:w - c_margin_x] = True
+
+        center_edges = float(np.sum(edges & mask_center))
+        outer_edges = float(np.sum(edges & mask_outer))
+        total_edges = float(np.sum(edges)) + 1e-8
+
+        # Penalty for heavy edge density on the extreme outer border (clipping/vignette)
+        outer_ratio = outer_edges / total_edges
         center_ratio = center_edges / total_edges
-        
-        occlusion_score = center_ratio * 100
-        
-        if occlusion_score >= 70:
+
+        # Good centering score: high center ratio, low outer ratio
+        occlusion_score = round(max(0.0, min(100.0, (center_ratio * 90.0) + (1.0 - outer_ratio * 2.5) * 20.0)), 1)
+
+        if occlusion_score >= 65:
             status = "UNOBSTRUCTED"
-        elif occlusion_score >= 50:
-            status = "MINIMAL_OCCLUSION"
+        elif occlusion_score >= self.occlusion_threshold:
+            status = "ACCEPTABLE_CENTERING"
         else:
-            status = "OCCLUDED"
-        
+            status = "OCCLUDED_OR_OFFCENTER"
+
         return occlusion_score, status
-    
-    def evaluate(self, image_path: str) -> QualityMetrics:
+
+    def evaluate(self, image_input: Any, custom_thresholds: Dict[str, float] = None) -> QualityMetrics:
         """
-        Comprehensive image quality assessment.
-        Returns QualityMetrics with all scores and triage recommendation.
+        Evaluates image quality from either a file path, PIL Image, or numpy array.
+        Returns QualityMetrics with scores, status, defect triggers, and visual edge overlay.
         """
-        image = cv2.imread(image_path)
-        
-        if image is None:
-            raise ValueError(f"Cannot read image: {image_path}")
-        
-        # Resize to standard size for consistent evaluation
-        image = cv2.resize(image, (224, 224))
-        
-        # Assess all dimensions
-        blur_score, blur_status = self.assess_blur(image)
-        lighting_score, lighting_status = self.assess_lighting(image)
-        glare_score, glare_status = self.assess_glare(image)
-        occlusion_score, occlusion_status = self.assess_occlusion(image)
-        
-        # Calculate overall quality
-        overall_quality = np.mean([blur_score, lighting_score, glare_score, occlusion_score])
-        
-        # Determine status and reasoning
+        th = custom_thresholds or {}
+        b_th = th.get("blur_threshold", self.blur_threshold)
+        l_th = th.get("lighting_threshold", self.lighting_threshold)
+        g_th = th.get("glare_threshold", self.glare_threshold)
+        o_th = th.get("occlusion_threshold", self.occlusion_threshold)
+        q_cutoff = th.get("quality_cutoff", self.quality_cutoff)
+
+        if isinstance(image_input, str):
+            pil_img = Image.open(image_input).convert('RGB')
+        elif isinstance(image_input, Image.Image):
+            pil_img = image_input.convert('RGB')
+        elif isinstance(image_input, np.ndarray):
+            pil_img = Image.fromarray(image_input).convert('RGB')
+        else:
+            raise ValueError(f"Unsupported image input type: {type(image_input)}")
+
+        # Resize to standard analysis resolution
+        pil_img = pil_img.resize((224, 224))
+        arr_rgb = np.array(pil_img, dtype=np.float32)
+        arr_gray = 0.299 * arr_rgb[:, :, 0] + 0.587 * arr_rgb[:, :, 1] + 0.114 * arr_rgb[:, :, 2]
+
+        blur_score, blur_status, grad_mag = self.assess_blur(arr_gray)
+        lighting_score, lighting_status = self.assess_lighting(arr_gray)
+        glare_score, glare_status = self.assess_glare(arr_rgb)
+        occlusion_score, occlusion_status = self.assess_occlusion(grad_mag)
+
+        overall_quality = round((blur_score + lighting_score + glare_score + occlusion_score) / 4.0, 1)
+
         reasoning = []
-        if blur_score < 40:
-            reasoning.append(f"Image is blurry (score: {blur_score:.1f})")
-        if lighting_score < 40:
-            reasoning.append(f"Poor lighting conditions (score: {lighting_score:.1f})")
-        if glare_score < 70:
-            reasoning.append(f"Glare/overexposure detected (score: {glare_score:.1f})")
-        if occlusion_score < 50:
-            reasoning.append(f"Possible occlusion/obstruction (score: {occlusion_score:.1f})")
-        
-        if overall_quality < 50:
+        triggers = []
+
+        if blur_score < b_th:
+            triggers.append(f"Blur ({blur_score:.1f} < {b_th:.1f})")
+            reasoning.append(f"Image sharpness below threshold ({blur_score:.1f} < {b_th:.1f}); edge blur may obscure pigment network.")
+        if lighting_score < l_th:
+            triggers.append(f"Lighting ({lighting_score:.1f} < {l_th:.1f})")
+            reasoning.append(f"Low illumination entropy ({lighting_score:.1f} < {l_th:.1f}); poor dynamic range.")
+        if glare_score < g_th:
+            triggers.append(f"Glare ({glare_score:.1f} < {g_th:.1f})")
+            reasoning.append(f"Specular reflection/glare detected ({glare_score:.1f} < {g_th:.1f}); white reflection voids.")
+        if occlusion_score < o_th:
+            triggers.append(f"Occlusion ({occlusion_score:.1f} < {o_th:.1f})")
+            reasoning.append(f"Lesion off-center or peripheral artifact ({occlusion_score:.1f} < {o_th:.1f}).")
+
+        if overall_quality < q_cutoff or len(triggers) >= 2:
             status = "RE_IMAGE"
             if not reasoning:
-                reasoning.append(f"Overall image quality poor (score: {overall_quality:.1f})")
-        elif overall_quality < 70:
+                reasoning.append(f"Composite quality below threshold ({overall_quality:.1f} < {q_cutoff:.1f}).")
+        elif overall_quality < 70.0 or len(triggers) == 1:
             status = "ACCEPTABLE_WITH_CAUTION"
         else:
             status = "ACCEPTABLE"
-        
+
+        if not reasoning:
+            reasoning.append("Image quality fully acceptable for dermoscopic evaluation.")
+
+        # Generate edge gradient visualization map
+        norm_grad = np.clip((grad_mag / (np.percentile(grad_mag, 98) + 1e-5)) * 255.0, 0, 255).astype(np.uint8)
+        grad_img = Image.fromarray(norm_grad)
+        buf = io.BytesIO()
+        grad_img.save(buf, format="PNG")
+        edge_map_b64 = "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode("utf-8")
+
         return QualityMetrics(
-            blur_score=round(blur_score, 2),
-            lighting_score=round(lighting_score, 2),
-            glare_score=round(glare_score, 2),
-            occlusion_score=round(occlusion_score, 2),
-            overall_quality=round(overall_quality, 2),
+            blur_score=blur_score,
+            lighting_score=lighting_score,
+            glare_score=glare_score,
+            occlusion_score=occlusion_score,
+            overall_quality=overall_quality,
             status=status,
-            reasoning=reasoning if reasoning else ["Image quality acceptable"]
+            reasoning=reasoning,
+            triggered_criteria=triggers,
+            edge_map_b64=edge_map_b64
         )
 
 # Singleton instance

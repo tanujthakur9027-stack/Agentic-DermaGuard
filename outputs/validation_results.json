@@ -1,11 +1,11 @@
 {
   "event": "JAYPEE AGENTIC AI INTERNATIONAL SUMMIT 2026",
   "track": "Track 2 | Healthcare",
-  "project": "Agentic DermaGuard: Multi-Agent Skin Lesion Screening & Triage",
-  "stage": "Day 1 / Level 1 Benchmark Submission",
-  "evaluation_timestamp": "2026-10-30T17:18:47Z",
+  "project": "Agentic DermaGuard (Six-Agent System)",
+  "stage": "Level 2 / Day 2 Multi-Agent Evaluation",
+  "evaluation_timestamp": "2026-10-30T22:18:32Z",
   "total_eval_samples": 1942,
-  "baseline_classification_metrics": {
+  "classification_metrics": {
     "overall_accuracy": 0.6982,
     "balanced_accuracy": 0.6482,
     "macro_precision": 0.5004,
@@ -14,42 +14,49 @@
     "weighted_f1_score": 0.7254,
     "class_metrics": {
       "Melanoma": {
+        "code": "mel",
         "precision": 0.3708,
         "recall": 0.6636,
         "f1_score": 0.4757,
         "support": 214
       },
       "Melanocytic nevus": {
+        "code": "nv",
         "precision": 0.9662,
         "recall": 0.7458,
         "f1_score": 0.8418,
         "support": 1302
       },
       "Basal cell carcinoma": {
+        "code": "bcc",
         "precision": 0.3947,
         "recall": 0.5941,
         "f1_score": 0.4743,
         "support": 101
       },
       "Actinic keratoses": {
+        "code": "akiec",
         "precision": 0.4078,
         "recall": 0.6667,
         "f1_score": 0.506,
         "support": 63
       },
       "Benign keratosis": {
+        "code": "bkl",
         "precision": 0.4775,
         "recall": 0.5,
         "f1_score": 0.4885,
         "support": 212
       },
       "Dermatofibroma": {
+        "code": "df",
         "precision": 0.3143,
         "recall": 0.4783,
         "f1_score": 0.3793,
         "support": 23
       },
       "Vascular lesion": {
+        "code": "vasc",
         "precision": 0.5714,
         "recall": 0.8889,
         "f1_score": 0.6957,
@@ -122,28 +129,52 @@
       ]
     ]
   },
-  "image_quality_agent_outcomes": {
-    "mean_overall_quality": 79.77,
-    "mean_blur_score": 89.61,
-    "mean_lighting_score": 76.62,
-    "mean_glare_score": 94.39,
-    "mean_occlusion_score": 58.47,
-    "quality_status_distribution": {
-      "ACCEPTABLE": 1742,
-      "ACCEPTABLE_WITH_CAUTION": 187,
-      "RE_IMAGE": 13
+  "live_demo_reporting_counts": {
+    "correct_auto_triage": 132,
+    "incorrect_auto_triage": 4,
+    "number_of_refers": 1654,
+    "number_of_re_image": 152,
+    "triage_distribution": {
+      "REFER": 1654,
+      "RE_IMAGE": 152,
+      "AUTO_TRIAGE": 136
     }
   },
-  "multi_agent_triage_decisions": {
-    "distribution": {
-      "REFER": 1144,
-      "AUTO_TRIAGE": 785,
-      "RE_IMAGE": 13
+  "six_agent_summary": {
+    "A1_image_quality": {
+      "mean_quality": 76.49,
+      "mean_blur": 59.24,
+      "mean_lighting": 80.49,
+      "mean_glare": 88.03,
+      "mean_occlusion": 78.21,
+      "status_breakdown": {
+        "ACCEPTABLE": 1177,
+        "ACCEPTABLE_WITH_CAUTION": 613,
+        "RE_IMAGE": 152
+      }
     },
-    "percentages": {
-      "REFER": 58.91,
-      "AUTO_TRIAGE": 40.42,
-      "RE_IMAGE": 0.67
+    "A3_lesion_analysis": {
+      "mean_suspicion_score": 0.78,
+      "suspicion_levels": {
+        "SUSPICIOUS": 1761,
+        "INDETERMINATE": 167,
+        "BENIGN_CUES": 14
+      }
+    },
+    "A4_context_reasoning": {
+      "risk_levels": {
+        "HIGH": 894,
+        "MODERATE": 872,
+        "LOW": 176
+      }
+    },
+    "A5_safety": {
+      "safety_flags": {
+        "SAFETY_VETO": 1782,
+        "PASS": 139,
+        "SAFETY_FLAG": 21
+      },
+      "vetoes_triggered": 1803
     }
   }
 }

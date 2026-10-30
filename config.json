@@ -1,18 +1,40 @@
 {
-  "lesion_classes": {
-    "0": "Melanoma",
-    "1": "Melanocytic nevus",
-    "2": "Basal cell carcinoma",
-    "3": "Actinic keratoses",
-    "4": "Benign keratosis",
-    "5": "Dermatofibroma",
-    "6": "Vascular lesion"
+  "track": "Track 2 | Healthcare",
+  "project": "Agentic DermaGuard: Six-Agent Skin Lesion Screening & Triage",
+  "level": 2,
+  "permitted_codes": [
+    "mel",
+    "nv",
+    "bcc",
+    "akiec",
+    "bkl",
+    "df",
+    "vasc"
+  ],
+  "code_to_name": {
+    "mel": "Melanoma",
+    "nv": "Melanocytic nevus",
+    "bcc": "Basal cell carcinoma",
+    "akiec": "Actinic keratoses",
+    "bkl": "Benign keratosis",
+    "df": "Dermatofibroma",
+    "vasc": "Vascular lesion"
   },
-  "train_samples": 7815,
-  "val_samples": 2000,
-  "image_size": 224,
+  "triage_actions": [
+    "AUTO_TRIAGE",
+    "REFER",
+    "RE_IMAGE"
+  ],
   "agents": [
-    "Image Quality Agent",
-    "Diagnosis Agent"
-  ]
+    "Agent 1: Image Quality Agent",
+    "Agent 2: Diagnosis Agent",
+    "Agent 3: Lesion Analysis Agent",
+    "Agent 4: Reasoning / Context Agent",
+    "Agent 5: Safety Agent",
+    "Agent 6: Coordinator Agent"
+  ],
+  "train_samples": 7815,
+  "val_samples": 1942,
+  "hidden_test_samples": 200,
+  "image_size": 224
 }

@@ -1,19 +1,30 @@
 import os
 from PIL import Image
 from typing import Dict, Any, Optional
+
 from agents.image_quality_agent import quality_agent, QualityMetrics
-from agents.diagnosis_agent import diagnosis_agent, diagnosis_transforms
+from agents.diagnosis_agent import diagnosis_agent, DiagnosisAgent
+from agents.lesion_analysis_agent import lesion_analysis_agent, LesionAnalysisAgent
+from agents.context_agent import context_agent, ContextAgent
+from agents.safety_agent import safety_agent, SafetyAgent
+from agents.coordinator_agent import coordinator_agent, CoordinatorAgent
 
 class AgenticDermaGuard:
     """
-    Multi-Agent Skin Lesion Screening & Triage Orchestrator.
-    Coordinates:
-      1. Image Quality Agent: Gates low-quality images (blur, illumination, glare, occlusion).
-      2. Diagnosis Agent: Evaluates lesion class probabilities (7 HAM10000 classes).
-    Synthesizes an explainable final decision: AUTO_TRIAGE, REFER, or RE_IMAGE.
+    Agentic DermaGuard: Six-Agent Skin Lesion Screening & Triage Orchestrator.
+    Jaypee Agentic AI International Summit 2026 — Track 2 | Healthcare
+
+    Coordinates all SIX specialized roles:
+      1. Image Quality Agent (A1): Blur, lighting, glare, obstruction, edge mapping.
+      2. Diagnosis Agent (A2): 7 HAM10000 classes (nv, mel, bcc, akiec, bkl, df, vasc).
+      3. Lesion Analysis Agent (A3): Visual cues (ABCD: Asymmetry, Border Irregularity, Color Variation).
+      4. Reasoning / Context Agent (A4): Demographic priors (Age, Sex, Site) & missing field handling.
+      5. Safety Agent (A5): Sentinel & veto (Cross-checks for discordance & unsafe automation).
+      6. Coordinator Agent (A6): Master decision policy synthesizing all signals.
     """
+
     def __init__(
-        self, 
+        self,
         quality_cutoff: float = 50.0,
         blur_threshold: float = 40.0,
         lighting_threshold: float = 40.0,
@@ -24,8 +35,11 @@ class AgenticDermaGuard:
     ):
         self.quality_agent = quality_agent
         self.diagnosis_agent = diagnosis_agent
-        
-        # Criteria Thresholds
+        self.lesion_agent = lesion_analysis_agent
+        self.context_agent = context_agent
+        self.safety_agent = safety_agent
+        self.coordinator_agent = coordinator_agent
+
         self.quality_cutoff = quality_cutoff
         self.blur_threshold = blur_threshold
         self.lighting_threshold = lighting_threshold
@@ -33,124 +47,112 @@ class AgenticDermaGuard:
         self.occlusion_threshold = occlusion_threshold
         self.malignancy_threshold = malignancy_threshold
         self.auto_triage_confidence = auto_triage_confidence
-        
-        self.high_risk_classes = {'Melanoma', 'Basal cell carcinoma', 'Actinic keratoses'}
-        self.benign_classes = {'Melanocytic nevus', 'Benign keratosis', 'Dermatofibroma', 'Vascular lesion'}
 
-    def process_image(self, image_path: str, custom_thresholds: Optional[Dict[str, float]] = None) -> Dict[str, Any]:
+    def process_image(
+        self,
+        image_input: Any,
+        patient_context: Optional[Dict[str, Any]] = None,
+        custom_thresholds: Optional[Dict[str, float]] = None
+    ) -> Dict[str, Any]:
         """
-        Executes multi-agent workflow on a single dermoscopic image with configurable threshold criteria.
+        Executes full six-agent workflow on a single dermoscopic capture.
+        Always returns both diagnosis prediction AND triage decision.
         """
-        if not os.path.exists(image_path):
-            raise FileNotFoundError(f"Image file not found: {image_path}")
+        if isinstance(image_input, str):
+            if not os.path.exists(image_input):
+                raise FileNotFoundError(f"Image not found: {image_input}")
+            pil_img = Image.open(image_input).convert('RGB')
+            img_path = image_input
+        elif isinstance(image_input, Image.Image):
+            pil_img = image_input.convert('RGB')
+            img_path = "memory://in-memory-image.jpg"
+        else:
+            raise ValueError(f"Unsupported image type: {type(image_input)}")
 
         th = custom_thresholds or {}
-        q_cutoff = th.get("quality_cutoff", self.quality_cutoff)
-        b_th = th.get("blur_threshold", self.blur_threshold)
-        l_th = th.get("lighting_threshold", self.lighting_threshold)
-        g_th = th.get("glare_threshold", self.glare_threshold)
-        o_th = th.get("occlusion_threshold", self.occlusion_threshold)
-        m_th = th.get("malignancy_threshold", self.malignancy_threshold)
-        a_th = th.get("auto_triage_confidence", self.auto_triage_confidence)
-
-        # Update quality agent thresholds dynamically
-        self.quality_agent.blur_threshold = 100.0
-        
-        # --- Step 1: Agent 1 (Image Quality Assessment) ---
-        quality_metrics = self.quality_agent.evaluate(image_path)
-        
-        # Check specific threshold criteria
-        triggers = []
-        if quality_metrics.blur_score < b_th:
-            triggers.append(f"Blur ({quality_metrics.blur_score:.1f} < {b_th:.1f})")
-        if quality_metrics.lighting_score < l_th:
-            triggers.append(f"Lighting ({quality_metrics.lighting_score:.1f} < {l_th:.1f})")
-        if quality_metrics.glare_score < g_th:
-            triggers.append(f"Glare ({quality_metrics.glare_score:.1f} < {g_th:.1f})")
-        if quality_metrics.occlusion_score < o_th:
-            triggers.append(f"Occlusion ({quality_metrics.occlusion_score:.1f} < {o_th:.1f})")
-            
-        is_reimage = (quality_metrics.overall_quality < q_cutoff) or (len(triggers) >= 2)
-        has_quality_caution = (quality_metrics.status == 'ACCEPTABLE_WITH_CAUTION') or (len(triggers) == 1)
-
-        # Gatekeeper Rule: If quality fails, short-circuit to RE_IMAGE
-        if is_reimage:
-            reasons_str = "; ".join(triggers if triggers else quality_metrics.reasoning)
-            return {
-                'image_path': image_path,
-                'final_decision': 'RE_IMAGE',
-                'primary_agent': 'Image Quality Agent',
-                'confidence': round(1.0 - (quality_metrics.overall_quality / 100.0), 3),
-                'explanation': f"Quality check rejected [Trigger: {', '.join(triggers) if triggers else 'Overall Score'}]: {reasons_str}. Re-imaging is required before safe clinical analysis.",
-                'quality_summary': {
-                    'blur_score': quality_metrics.blur_score,
-                    'lighting_score': quality_metrics.lighting_score,
-                    'glare_score': quality_metrics.glare_score,
-                    'occlusion_score': quality_metrics.occlusion_score,
-                    'overall_quality': quality_metrics.overall_quality,
-                    'status': 'RE_IMAGE',
-                    'reasons': quality_metrics.reasoning,
-                    'triggered_criteria': triggers
-                },
-                'diagnosis_summary': None
-            }
-
-        # --- Step 2: Agent 2 (Diagnosis & Probability Prediction) ---
-        img = Image.open(image_path).convert('RGB')
-        tensor = diagnosis_transforms(img)
-        diag_output = self.diagnosis_agent.predict(tensor)
-        
-        pred_class = diag_output['predicted_class']
-        diag_conf = diag_output['confidence']
-        
-        mel_prob = diag_output['all_probabilities'].get('Melanoma', 0.0)
-        bcc_prob = diag_output['all_probabilities'].get('Basal cell carcinoma', 0.0)
-        combined_malig = mel_prob + bcc_prob
-
-        # --- Step 3: Multi-Agent Clinical Triage Synthesis ---
-        if pred_class in self.high_risk_classes or combined_malig >= m_th:
-            final_decision = 'REFER'
-            lead_agent = 'Diagnosis Agent'
-            culprit = pred_class if pred_class in self.high_risk_classes else f"Combined malignancy suspicion ({combined_malig*100:.1f}% >= {m_th*100:.0f}%)"
-            explanation = (
-                f"Urgent Specialist Referral (REFER) [Trigger: {culprit}]: High risk lesion presentation "
-                f"with {diag_conf * 100:.1f}% primary confidence. Quality: {quality_metrics.overall_quality:.1f}/100."
-            )
-        elif diag_conf < a_th or has_quality_caution:
-            final_decision = 'REFER'
-            lead_agent = 'Consensus (Quality + Diagnosis)'
-            caution_text = f" (along with quality criteria: {', '.join(triggers)})" if triggers else ""
-            explanation = (
-                f"Clinical Referral (REFER) [Trigger: Diagnostic Uncertainty]: "
-                f"Top prediction '{pred_class}' confidence ({diag_conf * 100:.1f}%) is below auto-triage threshold ({a_th * 100:.0f}%){caution_text}."
-            )
-        else:
-            final_decision = 'AUTO_TRIAGE'
-            lead_agent = 'Consensus (Quality + Diagnosis)'
-            explanation = (
-                f"Automated Triage (AUTO_TRIAGE) [Trigger: Validated Benign]: High confidence benign '{pred_class}' "
-                f"({diag_conf * 100:.1f}% >= {a_th * 100:.0f}%) validated on high-quality dermoscopy ({quality_metrics.overall_quality:.1f}/100)."
-            )
-
-        return {
-            'image_path': image_path,
-            'final_decision': final_decision,
-            'primary_agent': lead_agent,
-            'predicted_class': pred_class,
-            'confidence': diag_conf,
-            'explanation': explanation,
-            'quality_summary': {
-                'blur_score': quality_metrics.blur_score,
-                'lighting_score': quality_metrics.lighting_score,
-                'glare_score': quality_metrics.glare_score,
-                'occlusion_score': quality_metrics.occlusion_score,
-                'overall_quality': quality_metrics.overall_quality,
-                'status': 'ACCEPTABLE_WITH_CAUTION' if has_quality_caution else 'ACCEPTABLE',
-                'reasons': quality_metrics.reasoning,
-                'triggered_criteria': triggers
-            },
-            'diagnosis_summary': diag_output
+        active_th = {
+            "blur_threshold": th.get("blur_threshold", self.blur_threshold),
+            "lighting_threshold": th.get("lighting_threshold", self.lighting_threshold),
+            "glare_threshold": th.get("glare_threshold", self.glare_threshold),
+            "occlusion_threshold": th.get("occlusion_threshold", self.occlusion_threshold),
+            "quality_cutoff": th.get("quality_cutoff", self.quality_cutoff),
+            "malignancy_threshold": th.get("malignancy_threshold", self.malignancy_threshold),
+            "auto_triage_confidence": th.get("auto_triage_confidence", self.auto_triage_confidence)
         }
 
-# Global singleton
+        # --- AGENT 1: Image Quality Agent ---
+        q_metrics = self.quality_agent.evaluate(pil_img, custom_thresholds=active_th)
+        a1_data = {
+            "blur_score": q_metrics.blur_score,
+            "lighting_score": q_metrics.lighting_score,
+            "glare_score": q_metrics.glare_score,
+            "occlusion_score": q_metrics.occlusion_score,
+            "overall_quality": q_metrics.overall_quality,
+            "status": q_metrics.status,
+            "reasoning": q_metrics.reasoning,
+            "triggered_criteria": q_metrics.triggered_criteria,
+            "edge_map_b64": q_metrics.edge_map_b64
+        }
+
+        # --- AGENT 2: Diagnosis Agent ---
+        # NOTE: Track golden rule: Every image still requires a diagnosis prediction!
+        diag_output = self.diagnosis_agent.predict(pil_img)
+
+        # --- AGENT 3: Lesion Analysis Agent ---
+        a3_data = self.lesion_agent.analyze(pil_img)
+
+        # --- AGENT 4: Reasoning / Context Agent ---
+        ctx = patient_context or {}
+        a4_data = self.context_agent.evaluate(
+            age=ctx.get("age"),
+            sex=ctx.get("sex"),
+            localization=ctx.get("localization")
+        )
+
+        # --- AGENT 5: Safety Agent ---
+        a5_data = self.safety_agent.review(
+            quality_data=a1_data,
+            diagnosis_data=diag_output,
+            lesion_data=a3_data,
+            context_data=a4_data
+        )
+
+        # --- AGENT 6: Coordinator Agent ---
+        a6_data = self.coordinator_agent.coordinate(
+            a1_quality=a1_data,
+            a2_diagnosis=diag_output,
+            a3_lesion=a3_data,
+            a4_context=a4_data,
+            a5_safety=a5_data,
+            custom_auto_conf=active_th["auto_triage_confidence"]
+        )
+
+        return {
+            "image_path": img_path,
+            # Master Level 2 outputs
+            "final_decision": a6_data["decision"],
+            "prediction": a6_data["prediction"],
+            "prediction_name": a6_data["prediction_name"],
+            "confidence": a6_data["confidence"],
+            "traceable_chain": a6_data["traceable_chain"],
+            "traceable_rationale": a6_data["rationale"],
+            "policy_rule": a6_data["policy_rule"],
+            # Detailed individual agent cards
+            "agents": {
+                "A1_quality": a1_data,
+                "A2_diagnosis": diag_output,
+                "A3_lesion_analysis": a3_data,
+                "A4_context_reasoning": a4_data,
+                "A5_safety": a5_data,
+                "A6_coordinator": a6_data
+            },
+            # Backward-compatible mappings
+            "primary_agent": a6_data["agent_name"],
+            "predicted_class": a6_data["prediction_name"],
+            "explanation": a6_data["rationale"],
+            "quality_summary": a1_data,
+            "diagnosis_summary": diag_output
+        }
+
+# Global singleton orchestrator
 agentic_dermaguard = AgenticDermaGuard()
