@@ -9,15 +9,29 @@ from http.server import BaseHTTPRequestHandler
 import numpy as np
 from PIL import Image, ImageFilter
 
-WORKSPACE_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-if WORKSPACE_ROOT not in sys.path:
-    sys.path.insert(0, WORKSPACE_ROOT)
+_this_dir = os.path.dirname(os.path.abspath(__file__))
+_parent_dir = os.path.abspath(os.path.join(_this_dir, ".."))
+_cwd = os.getcwd()
 
-BENCHMARK_FILE = os.path.join(WORKSPACE_ROOT, "outputs", "validation_results.json")
-SAMPLE_CSV_FILE = os.path.join(WORKSPACE_ROOT, "outputs", "final_submission_format_sample.csv")
+# Ensure all candidate module directories are in sys.path
+for _p in [_this_dir, _parent_dir, _cwd, "/var/task", "/var/task/api"]:
+    if os.path.isdir(_p) and _p not in sys.path:
+        sys.path.insert(0, _p)
+
+WORKSPACE_ROOT = _parent_dir if os.path.exists(os.path.join(_parent_dir, "public")) else _this_dir
+
+# Resolve benchmark and sample csv from either api/outputs/ or root outputs/
+BENCHMARK_FILE = os.path.join(_this_dir, "outputs", "validation_results.json")
+if not os.path.exists(BENCHMARK_FILE):
+    BENCHMARK_FILE = os.path.join(WORKSPACE_ROOT, "outputs", "validation_results.json")
+
+SAMPLE_CSV_FILE = os.path.join(_this_dir, "outputs", "final_submission_format_sample.csv")
+if not os.path.exists(SAMPLE_CSV_FILE):
+    SAMPLE_CSV_FILE = os.path.join(WORKSPACE_ROOT, "outputs", "final_submission_format_sample.csv")
+
 PUBLIC_DIR = os.path.join(WORKSPACE_ROOT, "public")
 
-# Import centralized thresholds
+# Import centralized thresholds with complete exception protection
 try:
     from backend.thresholds import (
         REGISTRY,
@@ -29,20 +43,36 @@ try:
         reset_thresholds,
         get_flat_thresholds
     )
-except ImportError:
-    from thresholds import (
-        REGISTRY,
-        PRESETS,
-        get_registry,
-        get_presets,
-        load_thresholds,
-        save_thresholds,
-        reset_thresholds,
-        get_flat_thresholds
-    )
+except Exception:
+    try:
+        from thresholds import (
+            REGISTRY,
+            PRESETS,
+            get_registry,
+            get_presets,
+            load_thresholds,
+            save_thresholds,
+            reset_thresholds,
+            get_flat_thresholds
+        )
+    except Exception as _e_th:
+        print(f"[Warning] Failed to import thresholds: {_e_th}")
+        REGISTRY = []
+        PRESETS = {}
+        def get_registry(): return []
+        def get_presets(): return {}
+        def load_thresholds(reload=False): return {}
+        def save_thresholds(th): return th
+        def reset_thresholds(p=None): return {}
+        def get_flat_thresholds(c=None): return {}
 
-# Import orchestrator
-from orchestrator import agentic_dermaguard, AgenticDermaGuard
+# Import orchestrator with non-crashing fallback for serverless import
+try:
+    from orchestrator import agentic_dermaguard, AgenticDermaGuard
+except Exception as _e_orch:
+    print(f"[Warning] Failed to import orchestrator at startup: {_e_orch}")
+    agentic_dermaguard = None
+    AgenticDermaGuard = None
 
 class handler(BaseHTTPRequestHandler):
     def _send_cors_headers(self):
@@ -307,11 +337,22 @@ class handler(BaseHTTPRequestHandler):
                 img_desc = image_id or "default_placeholder.jpg"
 
             # Execute full Six-Agent Orchestrator
-            res = agentic_dermaguard.process_image(
-                pil_img,
-                patient_context=patient_context,
-                custom_thresholds=thresholds
-            )
+            global agentic_dermaguard
+            if agentic_dermaguard is None:
+                try:
+                    from orchestrator import agentic_dermaguard as _ad
+                    agentic_dermaguard = _ad
+                except Exception as _ex:
+                    print(f"[Warning] Lazy import orchestrator: {_ex}")
+
+            if agentic_dermaguard is not None:
+                res = agentic_dermaguard.process_image(
+                    pil_img,
+                    patient_context=patient_context,
+                    custom_thresholds=thresholds
+                )
+            else:
+                raise RuntimeError("Six-Agent Orchestrator module could not be initialized")
             res["image_id"] = img_desc.replace(".jpg", "")
 
             self.send_response(200)
@@ -409,6 +450,16 @@ class handler(BaseHTTPRequestHandler):
 
     def _get_curated_samples(self) -> List[Dict[str, Any]]:
         """Returns a list of curated clinical demonstration cases."""
+        sample_path = os.path.join(_this_dir, "curated_samples.json")
+        if os.path.exists(sample_path):
+            try:
+                with open(sample_path, "r", encoding="utf-8") as f:
+                    cached = json.load(f)
+                    if isinstance(cached, list) and len(cached) > 0 and cached[0].get("image_b64"):
+                        return cached
+            except Exception:
+                pass
+
         samples_info = [
             {
                 "id": "ISIC_0024341",

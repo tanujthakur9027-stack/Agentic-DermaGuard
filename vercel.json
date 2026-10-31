@@ -1,5 +1,10 @@
 {
   "version": 2,
+  "functions": {
+    "api/index.py": {
+      "includeFiles": "{api/**,backend/**,agents/**,models/lightweight_weights.json,outputs/validation_results.json,outputs/final_submission_format_sample.csv,thresholds.py,thresholds.json,orchestrator.py}"
+    }
+  },
   "rewrites": [
     {
       "source": "/api/(.*)",
