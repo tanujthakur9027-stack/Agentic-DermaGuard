@@ -1,0 +1,14 @@
+{
+  "url": "https://api.organizers.example/submit",
+  "http_method": "POST",
+  "auth_header_name": "Authorization",
+  "auth_token": "",
+  "payload_mode": "multipart_file",
+  "file_field_name": "file",
+  "json_key_predictions": "predictions",
+  "extra_fields": {
+    "team_id": "AgenticDermaGuard",
+    "track": "Track 2 | Healthcare",
+    "level": "2"
+  }
+}
