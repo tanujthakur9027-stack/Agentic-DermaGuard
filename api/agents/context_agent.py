@@ -64,7 +64,7 @@ class ContextAgent:
         if age is None or (isinstance(age, float) and (math.isnan(age) or age <= 0)) or str(age).strip().lower() in {'unknown', 'nan', 'none', ''}:
             missing_flags.append("MISSING_AGE: Patient age is unspecified")
             flags.append("MISSING_AGE")
-            evidence_points.append("Age unspecified; using population median baseline (neutral prior).")
+            evidence_points.append("Age not provided; evaluated with standard neutral baseline.")
             risk_score += neutral_prior
         else:
             try:
@@ -72,20 +72,20 @@ class ContextAgent:
                 if parsed_age >= age_very_high:
                     risk_score += 0.45
                     flags.append("GERIATRIC_COHORT")
-                    evidence_points.append(f"Geriatric cohort ({parsed_age:.0f} yrs): Marked cumulative solar elastosis; high incidence of lentigo maligna, BCC, and SCC.")
+                    evidence_points.append(f"Age {parsed_age:.0f}: Seniors have had more lifetime sun exposure, so skin spots benefit from closer clinical checks.")
                 elif parsed_age >= age_high:
                     risk_score += 0.35
                     flags.append("SENIOR_COHORT")
-                    evidence_points.append(f"Senior cohort ({parsed_age:.0f} yrs): Elevated baseline prior for non-melanocytic and melanocytic skin neoplasms.")
+                    evidence_points.append(f"Age {parsed_age:.0f}: Age-related baseline risk is moderately elevated for common skin spots.")
                 elif parsed_age >= 40:
                     risk_score += 0.20
-                    evidence_points.append(f"Mature adult ({parsed_age:.0f} yrs): Moderate cumulative UV history; active surveillance recommended for atypical lesions.")
+                    evidence_points.append(f"Age {parsed_age:.0f}: Adults have typical sun exposure; new or changing spots should be monitored.")
                 elif parsed_age >= 25:
                     risk_score += 0.10
-                    evidence_points.append(f"Young adult ({parsed_age:.0f} yrs): Benign melanocytic nevi are prevalent; new or evolving lesions warrant monitoring.")
+                    evidence_points.append(f"Age {parsed_age:.0f}: Harmless moles are very common at this age; routine self-checks are recommended.")
                 else:
                     risk_score += 0.05
-                    evidence_points.append(f"Adolescent / pediatric cohort ({parsed_age:.0f} yrs): Very low spontaneous malignancy prior; congenital or acquired nevi predominate.")
+                    evidence_points.append(f"Age {parsed_age:.0f}: Skin spots at this age are almost always harmless, benign moles.")
             except (ValueError, TypeError):
                 missing_flags.append("INVALID_AGE: Could not parse age numeric")
                 flags.append("MISSING_AGE")
@@ -96,16 +96,16 @@ class ContextAgent:
         if not sex or str(sex).strip().lower() in {'unknown', 'nan', 'none', ''}:
             missing_flags.append("MISSING_SEX: Patient gender not recorded")
             flags.append("MISSING_SEX")
-            evidence_points.append("Patient gender unrecorded; using gender-neutral clinical baseline.")
+            evidence_points.append("Patient gender not provided; evaluated with neutral baseline.")
             risk_score += (neutral_prior * 0.7)
         else:
             parsed_sex = str(sex).strip().lower()
             if parsed_sex in {'male', 'm'}:
                 risk_score += (sex_w * 2.0)
-                evidence_points.append("Male sex: Statistically higher melanoma mortality and propensity for aggressive trunk/scalp presentations.")
+                evidence_points.append("Male patient: Statistically higher risk of spots developing on the back, chest, or scalp.")
             elif parsed_sex in {'female', 'f'}:
+                evidence_points.append("Female patient: Common location for benign or monitored spots on arms and legs.")
                 risk_score += sex_w
-                evidence_points.append("Female sex: Lower population-adjusted melanoma mortality; higher prevalence of extremity lesions.")
             else:
                 missing_flags.append(f"UNRECOGNIZED_SEX: '{sex}'")
                 flags.append("MISSING_SEX")
@@ -116,32 +116,32 @@ class ContextAgent:
         if not localization or str(localization).strip().lower() in {'unknown', 'nan', 'none', ''}:
             missing_flags.append("MISSING_LOCALIZATION: Lesion anatomical site not recorded")
             flags.append("MISSING_LOCALIZATION")
-            evidence_points.append("Anatomical site unknown; solar exposure pattern cannot be determined.")
+            evidence_points.append("Body location not recorded; sun exposure pattern cannot be determined.")
             risk_score += neutral_prior
         else:
             parsed_loc = str(localization).strip().lower()
             if parsed_loc in high_risk_sites or parsed_loc in self.chronic_uv_sites:
                 risk_score += 0.35
                 flags.append("CHRONIC_UV_SITE")
-                evidence_points.append(f"High-risk anatomical site '{parsed_loc}': Chronic solar ultraviolet exposure zone prone to actinic keratoses and lentigo maligna.")
+                evidence_points.append(f"High-sun-exposure area ('{parsed_loc}'): High lifetime sun exposure (face, scalp, ears, or neck) warrants extra attention.")
             elif parsed_loc in self.intermittent_uv_sites:
                 risk_score += 0.25
-                evidence_points.append(f"Intermittent UV exposure site '{parsed_loc}': Classic anatomical distribution for superficial spreading melanoma in adults.")
+                evidence_points.append(f"Sun-exposed body area ('{parsed_loc}'): Common location for sun-related moles on the torso or limbs.")
             else:
                 risk_score += 0.10
-                evidence_points.append(f"Standard anatomical site '{parsed_loc}': Lower comparative solar UV density relative to head and trunk.")
+                evidence_points.append(f"Lower sun-exposure area ('{parsed_loc}'): Lower lifetime sun exposure compared to the face or upper body.")
 
-        # High-Risk Triad Interaction: Elderly male with head/neck/back lesion
+        # High-Risk Triad Interaction: Older male with head/neck/back lesion
         if parsed_age and parsed_age >= age_high and parsed_sex in {'male', 'm'} and (parsed_loc in high_risk_sites or parsed_loc == 'back'):
             risk_score += triad_bonus
             flags.append("HIGH_RISK_TRIAD")
-            evidence_points.append("CRITICAL RISK TRIAD: Older male presenting with head/neck/back lesion triggers heightened diagnostic vigilance.")
+            evidence_points.append("Key risk combination: Older patient with a spot on a high sun-exposure area (head, neck, or back) warrants extra clinical care.")
 
         # Complete missing context scenario (all 3 demographic fields unprovided)
         if len(missing_flags) >= 3:
             risk_score = neutral_prior
             risk_indicator = "LOW"
-            evidence_points = ["Demographic metadata absent; evaluated with neutral prior baseline."]
+            evidence_points = ["Patient details not provided; evaluated with neutral baseline."]
         else:
             risk_score = round(min(1.0, max(0.05, risk_score)), 3)
             if risk_score >= very_high_thresh:
@@ -162,7 +162,7 @@ class ContextAgent:
                 "threshold": age_high,
                 "direction": "<",
                 "passed": parsed_age is not None and parsed_age < age_high,
-                "note": f"Age is {f'{parsed_age:.0f} yrs' if parsed_age else 'Unspecified'} (senior cutoff: {age_high} yrs, geriatric cutoff: {age_very_high} yrs)"
+                "note": f"Patient age: {f'{parsed_age:.0f} years' if parsed_age else 'Not provided'} (senior threshold: {age_high:.0f} years)"
             },
             {
                 "feature": "anatomical_site_risk",
@@ -170,7 +170,7 @@ class ContextAgent:
                 "threshold": list(high_risk_sites),
                 "direction": "not in",
                 "passed": parsed_loc is not None and parsed_loc not in high_risk_sites,
-                "note": f"Location is '{parsed_loc or 'Unknown'}' (high risk sites: {', '.join(sorted(list(high_risk_sites)))})"
+                "note": f"Body location: '{parsed_loc or 'Not provided'}' (sun-sensitive areas: face, scalp, neck, ears)"
             },
             {
                 "feature": "demographic_risk_score",
@@ -178,7 +178,7 @@ class ContextAgent:
                 "threshold": mod_upper,
                 "direction": "<",
                 "passed": risk_score < mod_upper,
-                "note": f"Context cumulative risk score is {risk_score:.2f} (MODERATE >= {low_upper:.2f}, HIGH >= {mod_upper:.2f})"
+                "note": f"Background risk score: {risk_score:.2f} (Moderate >= {low_upper:.2f}, High >= {mod_upper:.2f})"
             },
             {
                 "feature": "demographic_completeness",
@@ -186,7 +186,7 @@ class ContextAgent:
                 "threshold": 100.0,
                 "direction": "==",
                 "passed": len(missing_flags) == 0,
-                "note": f"Demographic chart completeness is {completeness_pct:.0f}% ({len(missing_flags)} missing fields flagged)"
+                "note": f"Patient information provided: {completeness_pct:.0f}% ({len(missing_flags)} unrecorded fields)"
             }
         ]
 
@@ -204,11 +204,11 @@ class ContextAgent:
         if parsed_age is not None:
             margin_to_threshold["age_high_risk"] = round(age_high - parsed_age, 1)
 
-        summary = f"Patient presentation exhibits {risk_indicator} demographic risk based on age, anatomical site, and solar UV history."
+        summary = f"Background risk is {risk_indicator} based on patient age, body location, and sun-exposure profile."
 
         explanation = (
-            f"Context & Demographics Agent evaluated clinical risk at {risk_score:.2f}/1.0 ({risk_indicator}). "
-            f"Patient is {f'{parsed_age:.0f} years old' if parsed_age else 'unspecified age'} presenting with lesion at '{parsed_loc or 'unrecorded site'}'. "
+            f"The Context & Demographics Agent estimated background risk as {risk_indicator} (score: {risk_score:.2f}/1.0). "
+            f"Patient is {f'{parsed_age:.0f} years old' if parsed_age else 'age unspecified'} with a spot on the '{parsed_loc or 'unspecified area'}'. "
             f"{evidence_points[0]}"
         )
 

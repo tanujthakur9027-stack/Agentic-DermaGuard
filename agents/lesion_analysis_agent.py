@@ -138,7 +138,7 @@ class LesionAnalysisAgent:
             "vertical_non_overlap": round(v_diff, 3),
             "horizontal_non_overlap": round(h_diff, 3),
             "status": status,
-            "clinical_meaning": "Benign nevi are usually symmetric along both axes (score 0); melanomas frequently show asymmetry along 1 or 2 axes."
+            "clinical_meaning": "Harmless moles are usually evenly balanced (score 0); concerning spots often look uneven across one or both halves (score 1-2)."
         }
 
     def compute_abcd_border(self, mask: np.ndarray, edge_map: np.ndarray, centroid: Tuple[int, int]) -> Tuple[float, int, Dict[str, Any]]:
@@ -192,7 +192,7 @@ class LesionAnalysisAgent:
             "solidity": round(solidity, 3),
             "compactness": round(compactness, 2),
             "status": status,
-            "clinical_meaning": "Smooth nevi have gradual fading borders (score 0-2); malignant lesions exhibit sharp cutoffs and notched borders (score 4-8)."
+            "clinical_meaning": "Smooth moles have clean, even edges (score 0-2); spots needing medical checks often have jagged, scalloped, or notched edges (score 4-8)."
         }
 
     def compute_abcd_color(self, arr_rgb: np.ndarray, mask: np.ndarray) -> Tuple[float, int, Dict[str, Any]]:
@@ -260,7 +260,7 @@ class LesionAnalysisAgent:
             "continuous_score": round(color_continuous, 3),
             "mean_channel_std": round(mean_std, 2),
             "status": status,
-            "clinical_meaning": "Benign nevi typically contain 1 or 2 shades of brown; malignant melanoma presents 3 to 6 colors including red, white, or blue-gray."
+            "clinical_meaning": "Harmless moles typically show 1 or 2 even shades of brown; spots of concern often display 3 or more colors like red, dark brown, or blue-gray."
         }
 
     def compute_abcd_diameter_structure(self, mask: np.ndarray) -> Tuple[float, float, Dict[str, Any]]:
@@ -407,10 +407,14 @@ class LesionAnalysisAgent:
         overlay_img.save(buf, format="PNG")
         edge_map_b64 = "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode("utf-8")
 
+        # Clean color names for patient-friendly display
+        clean_colors = [c.split(" (")[0] for c in c_data.get("colors_found", [])]
+        colors_display = ", ".join(clean_colors[:3]) if clean_colors else "Tan/Brown"
+
         summary_narrative = (
-            f"ABCD Dermoscopy: TDS={tds_score:.2f} ({tds_assessment}). "
-            f"Asymmetry={a_pts}/2 axes, Border={b_pts}/8 octants (compactness {b_data['compactness']}), "
-            f"Colors={c_pts}/6 shades ({', '.join(c_data['colors_found'][:3])})."
+            f"ABCD Skin Check: TDS score {tds_score:.2f} ({tds_assessment}). "
+            f"Shape asymmetry: {a_pts}/2 axes, Edges: {b_pts}/8 irregularity score, "
+            f"Colors: {c_pts}/6 shades ({colors_display})."
         )
 
         # Explaining Agent Contract: Evidence
@@ -421,7 +425,7 @@ class LesionAnalysisAgent:
                 "threshold": b_compact_high,
                 "direction": "<=",
                 "passed": b_data["compactness"] <= b_compact_high,
-                "note": f"Border compactness is {b_data['compactness']:.2f} (cutoff {b_compact_high:.2f}; score {b_pts}/8 octants)"
+                "note": f"Border smoothness is {b_data['compactness']:.2f} (smooth target: <={b_compact_high:.2f}; irregularity score {b_pts}/8)"
             },
             {
                 "feature": "geometric_asymmetry",
@@ -429,7 +433,7 @@ class LesionAnalysisAgent:
                 "threshold": asym_high,
                 "direction": "<=",
                 "passed": a_cont <= asym_high,
-                "note": f"Asymmetry fold ratio is {a_cont:.2f} ({a_pts}/2 axes with significant difference)"
+                "note": f"Shape asymmetry index is {a_cont:.2f} (balanced target: <={asym_high:.2f}; {a_pts}/2 axes uneven)"
             },
             {
                 "feature": "color_variegation",
@@ -437,7 +441,7 @@ class LesionAnalysisAgent:
                 "threshold": c_var_high,
                 "direction": "<=",
                 "passed": c_data.get("mean_channel_std", 25.0) <= c_var_high,
-                "note": f"Color standard deviation is {c_data.get('mean_channel_std', 25.0):.1f} ({c_pts}/6 chromophores: {', '.join(c_data['colors_found'][:2])})"
+                "note": f"Color variation index is {c_data.get('mean_channel_std', 25.0):.1f} ({c_pts} colors detected: {colors_display})"
             },
             {
                 "feature": "total_dermoscopy_score",
@@ -445,7 +449,7 @@ class LesionAnalysisAgent:
                 "threshold": tds_indet,
                 "direction": "<=",
                 "passed": tds_score <= tds_indet,
-                "note": f"Stolz TDS score is {tds_score:.2f} (benign upper: {tds_benign:.2f}, suspicious upper: {tds_indet:.2f})"
+                "note": f"Total Dermoscopy Score (TDS) is {tds_score:.2f} (harmless mole: <{tds_benign:.2f}, monitor: {tds_benign:.2f}–{tds_indet:.2f}, high concern: >{tds_indet:.2f})"
             },
             {
                 "feature": "lesion_area_fraction",
@@ -453,7 +457,7 @@ class LesionAnalysisAgent:
                 "threshold": min_area_pct,
                 "direction": ">=",
                 "passed": area_pct >= min_area_pct,
-                "note": f"Lesion covers {area_pct:.1f}% of image field (min reliability {min_area_pct:.1f}%)"
+                "note": f"Spot covers {area_pct:.1f}% of the image (at least {min_area_pct:.1f}% needed for reliable geometric analysis)"
             }
         ]
 
@@ -473,16 +477,20 @@ class LesionAnalysisAgent:
         }
 
         if suspicion_level == "SUSPICIOUS":
-            plain_summary = "Border irregularity and structural asymmetry raise dermoscopic suspicion."
+            plain_summary = "The spot has uneven edges, asymmetrical shape, or multiple color shades that warrant clinical attention."
         elif suspicion_level == "INDETERMINATE":
-            plain_summary = "Lesion exhibits intermediate structural complexity warranting caution."
+            plain_summary = "The spot shows mild irregularities in shape or color that suggest caution and monitoring."
         else:
-            plain_summary = "Lesion demonstrates regular borders and symmetrical architecture characteristic of benign nevi."
+            plain_summary = "The spot is well-rounded, balanced in shape, and even in color, typical of a healthy mole."
+
+        border_desc = "smooth and even" if b_pts <= 2 else ("slightly scalloped" if b_pts <= 5 else "jagged and notched")
+        asym_desc = "balanced" if a_pts == 0 else ("uneven along 1 axis" if a_pts == 1 else "uneven along both axes")
 
         explanation = (
-            f"Lesion Analysis Agent computed an ABCD suspicion score of {suspicion_score:.2f} (TDS={tds_score:.2f}, {tds_assessment}). "
-            f"Border compactness was evaluated at {b_data['compactness']:.2f} ({b_pts}/8 notched octants) with {a_pts}/2 geometric asymmetry axes. "
-            f"Color analysis revealed {c_pts}/6 distinct dermoscopic pigments across a lesion area of {area_pct:.1f}%."
+            f"The Lesion Analysis Agent evaluated this spot using clinical ABCD criteria (Asymmetry, Border, Color, Diameter). "
+            f"Total suspicion score is {suspicion_score:.2f} (TDS={tds_score:.2f}). "
+            f"The border is {border_desc} (irregularity score {b_pts}/8), the overall shape is {asym_desc} ({a_pts}/2 axes), "
+            f"and it displays {c_pts} distinct color shades ({colors_display}) across {area_pct:.1f}% of the view."
         )
 
         conf_in_agent = 0.65 if "LOW_RELIABILITY" in flags else 0.85

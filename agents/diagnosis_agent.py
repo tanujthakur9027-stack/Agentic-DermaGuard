@@ -49,13 +49,13 @@ CODE_TO_NAME = {
 }
 
 CLINICAL_DESCRIPTIONS = {
-    'mel': "Malignant Melanoma: High-risk neuroectodermal malignancy characterized by atypical pigment network, irregular globules, and potential for deep invasion. Urgent surgical excision/biopsy required.",
-    'nv': "Melanocytic Nevus: Benign melanocytic proliferation with symmetrical pigment architecture and regular peripheral borders. Routine primary care surveillance recommended.",
-    'bcc': "Basal Cell Carcinoma: Locally invasive non-melanocytic epidermal malignancy often presenting with arborizing telangiectasia, blue-gray ovoid nests, or ulceration.",
-    'akiec': "Actinic Keratoses / Intraepithelial Carcinoma: Pre-malignant keratinocytic dysplasia with rough scaly texture caused by chronic solar damage. Cryotherapy or topical field therapy indicated.",
-    'bkl': "Benign Keratosis: Seborrheic keratosis or lichen-planus like lesion presenting milia-like cysts or fingerprint-like ridges. Benign natural course.",
-    'df': "Dermatofibroma: Benign fibrohistiocytic dermal nodule with characteristic central white scar-like patch and delicate peripheral pigment network.",
-    'vasc': "Vascular Lesion: Benign hemangioma, angiokeratoma, or pyogenic granuloma exhibiting prominent red-purple lacunae without melanocytic atypia."
+    'mel': "Melanoma: A serious type of skin cancer originating in pigment cells. Early detection and prompt dermatologist evaluation or biopsy are essential.",
+    'nv': "Normal Mole (Nevus): A very common, harmless growth of pigment cells. Typical moles have uniform color and smooth borders, needing only routine self-checks.",
+    'bcc': "Basal Cell Carcinoma: The most common type of skin cancer. It usually grows slowly, rarely spreads to other organs, and is highly treatable when checked by a doctor.",
+    'akiec': "Actinic Keratosis / Sun Spot: A rough, scaly precancerous patch caused by long-term sun exposure. Early treatment prevents progression to skin cancer.",
+    'bkl': "Benign Keratosis (Age/Wisdom Spot): A harmless, non-cancerous skin growth (like a seborrheic keratosis) that commonly appears with age. No treatment needed.",
+    'df': "Dermatofibroma: A harmless, firm bump under the skin that often feels like a small button. Completely benign and safe.",
+    'vasc': "Vascular Lesion (Blood Vessel Spot): A harmless cluster of small blood vessels (such as a cherry angioma). Non-cancerous and benign."
 }
 
 if HAVE_TORCH:
@@ -221,6 +221,14 @@ class DiagnosisAgent:
         if tta_disagreement > tta_thresh:
             flags.append("TTA_INSTABILITY")
 
+        # Friendly certainty label
+        if certainty == "HIGH_CERTAINTY":
+            certainty_phrase = "high diagnostic clarity"
+        elif certainty == "MODERATE_CERTAINTY":
+            certainty_phrase = "moderate diagnostic clarity"
+        else:
+            certainty_phrase = "borderline ambiguity between multiple possibilities"
+
         # Formal Explaining Agent contract evidence list
         evidence = [
             {
@@ -229,7 +237,7 @@ class DiagnosisAgent:
                 "threshold": auto_conf_th,
                 "direction": ">=",
                 "passed": confidence >= auto_conf_th,
-                "note": f"Primary confidence is {confidence*100:.1f}% (hurdle: {auto_conf_th*100:.0f}%)"
+                "note": f"Primary confidence is {confidence*100:.1f}% (target for safe automated clearance is {auto_conf_th*100:.0f}%)"
             },
             {
                 "feature": "top2_margin",
@@ -237,7 +245,7 @@ class DiagnosisAgent:
                 "threshold": margin_min,
                 "direction": ">=",
                 "passed": margin >= margin_min,
-                "note": f"Top-2 margin is {margin:.3f} between '{pred_code}' and '{codes[sorted_indices[1]]}' (min: {margin_min:.3f})"
+                "note": f"Lead over the runner-up diagnosis is {margin*100:.1f}% (gap between '{pred_code}' and '{codes[sorted_indices[1]]}', minimum target: {margin_min*100:.1f}%)"
             },
             {
                 "feature": "shannon_entropy",
@@ -245,7 +253,7 @@ class DiagnosisAgent:
                 "threshold": max_entropy,
                 "direction": "<=",
                 "passed": entropy <= max_entropy,
-                "note": f"Distribution entropy is {entropy:.2f} bits (max: {max_entropy:.2f} bits)"
+                "note": f"Diagnostic clarity score is {entropy:.2f} bits (lower means more decisive; upper limit: {max_entropy:.2f} bits)"
             },
             {
                 "feature": "cumulative_malignancy_risk",
@@ -253,7 +261,7 @@ class DiagnosisAgent:
                 "threshold": malig_thresh,
                 "direction": "<=",
                 "passed": cum_malig <= malig_thresh,
-                "note": f"Combined malignant risk (mel+bcc+akiec) is {cum_malig*100:.1f}% (cutoff: {malig_thresh*100:.1f}%)"
+                "note": f"Combined cancer risk (Melanoma + Basal Cell + Pre-cancer) is {cum_malig*100:.1f}% (safety ceiling: {malig_thresh*100:.1f}%)"
             },
             {
                 "feature": "melanoma_risk",
@@ -261,7 +269,7 @@ class DiagnosisAgent:
                 "threshold": mel_thresh,
                 "direction": "<=",
                 "passed": mel_p <= mel_thresh,
-                "note": f"Melanoma probability is {mel_p*100:.1f}% (cutoff: {mel_thresh*100:.1f}%)"
+                "note": f"Melanoma-specific probability is {mel_p*100:.1f}% (safety ceiling: {mel_thresh*100:.1f}%)"
             }
         ]
 
@@ -281,12 +289,12 @@ class DiagnosisAgent:
             "mel_prob_threshold": round(mel_thresh - mel_p, 4)
         }
 
-        summary = f"Model predicts {CODE_TO_NAME[pred_code]} [{pred_code}] with {confidence*100:.1f}% confidence."
+        summary = f"The AI model predicts {CODE_TO_NAME[pred_code]} ({pred_code}) with {confidence*100:.1f}% confidence."
 
         explanation = (
-            f"Diagnosis Agent classified the dermoscopic lesion as '{CODE_TO_NAME[pred_code]}' ({pred_code}) with {confidence*100:.1f}% primary probability. "
-            f"The top-2 candidate separation margin is {margin:.3f} and Shannon entropy is {entropy:.2f} bits ({certainty}). "
-            f"Cumulative malignancy probability is {cum_malig*100:.1f}% (Melanoma: {mel_p*100:.1f}%, BCC: {bcc_p*100:.1f}%, AKIEC: {akiec_p*100:.1f}%)."
+            f"The Diagnosis Agent identified this spot as {CODE_TO_NAME[pred_code]} ({pred_code}) with {confidence*100:.1f}% primary confidence. "
+            f"The top prediction leads the second most likely condition by a margin of {margin*100:.1f}%, showing {certainty_phrase}. "
+            f"Total estimated cancer risk across all malignant categories is {cum_malig*100:.1f}% (Melanoma: {mel_p*100:.1f}%, Basal Cell: {bcc_p*100:.1f}%, Actinic Keratosis/Pre-cancer: {akiec_p*100:.1f}%)."
         )
 
         return {

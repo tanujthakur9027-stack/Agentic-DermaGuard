@@ -99,12 +99,12 @@ class CoordinatorAgent:
         if rule_q_enabled and q_status == "RE_IMAGE":
             decision = "RE_IMAGE"
             flags.append("POLICY_RULE_1_QUALITY_GATE")
-            policy_rule = "Policy Rule 1 (Quality Gate): Capture degradation prevents dependable reading."
+            policy_rule = "Policy Rule 1 (Photo Quality): Photo is not clear enough for automated screening."
             triggers = a1_quality.get("triggered_criteria", a1_quality.get("flags", ["Low composite quality"]))
             action_justification = (
-                f"Image quality failed clinical acceptance ({', '.join(triggers)}). "
-                f"Re-imaging requested before definitive screening. "
-                f"Preliminary diagnostic inference is '{pred_name}' [{pred_code}] ({conf*100:.1f}%), recorded per competition guidelines."
+                f"Photo quality did not meet screening standards ({', '.join(triggers)}). "
+                f"Please take a clearer photo before final screening. "
+                f"Preliminary diagnosis estimate is '{pred_name}' [{pred_code}] ({conf*100:.1f}%), recorded per competition guidelines."
             )
             detailed_rationale.append(action_justification)
 
@@ -112,10 +112,10 @@ class CoordinatorAgent:
         elif rule_mal_enabled and pred_code in self.malignant_codes:
             decision = "REFER"
             flags.append("POLICY_RULE_2_MALIGNANCY")
-            policy_rule = f"Policy Rule 2 (Malignancy Referral): Detected high-risk lesion code '{pred_code}'."
+            policy_rule = f"Policy Rule 2 (Doctor Referral): Detected potential skin cancer code '{pred_code}'."
             action_justification = (
-                f"Diagnosis Agent identified malignant pathology '{pred_name}' [{pred_code}] with {conf*100:.1f}% primary confidence. "
-                f"Automated triage is strictly forbidden; urgent dermatologist biopsy indicated."
+                f"The Diagnosis Agent identified a potential skin cancer '{pred_name}' [{pred_code}] with {conf*100:.1f}% confidence. "
+                f"Automated sign-off is paused; prompt evaluation by a dermatologist is recommended."
             )
             detailed_rationale.append(action_justification)
 
@@ -124,10 +124,10 @@ class CoordinatorAgent:
             decision = "REFER"
             flags.append("POLICY_RULE_3_SAFETY_VETO")
             primary_trig = a5_safety.get("primary_trigger", "Clinical conflict detected")
-            policy_rule = f"Policy Rule 3 (Safety Sentinel Veto): Overrode automated triage via {primary_trig}."
+            policy_rule = f"Policy Rule 3 (Safety Check Referral): Safety review flagged an issue via {primary_trig}."
             action_justification = (
-                f"Clinical safety sentinel vetoed automated discharge: {a5_safety.get('justification', '')} "
-                f"Escalated to specialist review to protect patient safety."
+                f"The clinical safety check recommended an in-person review: {a5_safety.get('justification', '')} "
+                f"Referred to a specialist to ensure patient safety."
             )
             detailed_rationale.append(action_justification)
 
@@ -135,11 +135,11 @@ class CoordinatorAgent:
         elif rule_conf_enabled and (conf < auto_conf_threshold or is_ambiguous):
             decision = "REFER"
             flags.append("POLICY_RULE_4_DIAGNOSTIC_UNCERTAINTY")
-            policy_rule = f"Policy Rule 4 (Diagnostic Uncertainty): Confidence {conf*100:.1f}% below threshold {auto_conf_threshold*100:.0f}% or differential ambiguity."
+            policy_rule = f"Policy Rule 4 (Uncertainty Referral): Confidence ({conf*100:.1f}%) is below the {auto_conf_threshold*100:.0f}% bar for automated sign-off."
             action_justification = (
-                f"Primary candidate '{pred_name}' [{pred_code}] confidence ({conf*100:.1f}%) is below the "
-                f"autonomous triage threshold ({auto_conf_threshold*100:.0f}%) or exhibits differential ambiguity. "
-                f"Clinical evaluation required to resolve diagnostic ambiguity."
+                f"The model's confidence for '{pred_name}' [{pred_code}] ({conf*100:.1f}%) is below the "
+                f"threshold ({auto_conf_threshold*100:.0f}%) required to safely clear without a doctor. "
+                f"An in-person doctor check is advised to resolve the uncertainty."
             )
             detailed_rationale.append(action_justification)
 
@@ -147,18 +147,18 @@ class CoordinatorAgent:
         elif rule_auto_enabled and (pred_code in self.benign_codes and conf >= auto_conf_threshold and not safety_veto):
             decision = "AUTO_TRIAGE"
             flags.append("POLICY_RULE_5_VERIFIED_BENIGN_AUTOTRIAGE")
-            policy_rule = "Policy Rule 5 (Verified Benign Autonomous Screening): High-confidence benign lesion with clear safety checks."
+            policy_rule = "Policy Rule 5 (Clear Benign Automated Triage): Confident harmless spot with all safety checks cleared."
             action_justification = (
-                f"Autonomous screening approved: High-confidence benign '{pred_name}' [{pred_code}] ({conf*100:.1f}% >= {auto_conf_threshold*100:.0f}%) "
-                f"corroborated by regular dermoscopic ABCD features (TDS: {tds_score:.2f}) and validated image capture quality ({q_score:.1f}/100)."
+                f"Automated clearance approved: Confident harmless spot ('{pred_name}' [{pred_code}], {conf*100:.1f}% >= {auto_conf_threshold*100:.0f}%) "
+                f"confirmed by even borders and shape (ABCD score {tds_score:.2f}) and clear photo quality ({q_score:.1f}/100)."
             )
             detailed_rationale.append(action_justification)
 
         else:
             decision = "REFER"
             flags.append("POLICY_RULE_6_FALLBACK_REFERRAL")
-            policy_rule = "Policy Rule 6 (Conservative Clinical Fallback): Multi-agent consensus borderline."
-            action_justification = "Conservative clinical referral applied due to borderline multi-agent consensus."
+            policy_rule = "Policy Rule 6 (Safety Referral): Multi-agent consensus borderline."
+            action_justification = "Referred for specialist evaluation as a safety precaution due to borderline consensus among agents."
             detailed_rationale.append(action_justification)
 
         # Standardized Traceable Chain matching Summit Specification:
@@ -231,11 +231,11 @@ class CoordinatorAgent:
             "auto_triage_confidence": round(conf - auto_conf_threshold, 4)
         }
 
-        summary = f"Final disposition is {decision} with diagnosis '{pred_name}' [{pred_code}] ({conf*100:.1f}% confidence)."
+        summary = f"Final decision is {decision} with diagnosis '{pred_name}' [{pred_code}] ({conf*100:.1f}% confidence)."
 
         explanation = (
-            f"Coordinator Agent synthesized outputs from all 5 agents and executed {policy_rule}. "
-            f"The final diagnosis is confirmed as '{pred_name}' [{pred_code}] with disposition '{decision}'. "
+            f"The Coordinator Agent brought together findings from all 5 agents and applied {policy_rule}. "
+            f"The final diagnosis is '{pred_name}' [{pred_code}] with action '{decision}'. "
             f"{action_justification}"
         )
 

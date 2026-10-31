@@ -265,36 +265,36 @@ class ImageQualityAgent:
         if is_blur_defect:
             triggers.append(f"Blur ({blur_score:.1f} < {b_th:.1f})")
             flags.append("BLUR_DEFECT")
-            reasoning.append(f"Sharpness index ({blur_score:.1f} < {b_th:.1f}) indicates motion/focus blur that obscures delicate pigment reticulation.")
+            reasoning.append(f"Image is too blurry ({blur_score:.1f}/100, minimum {b_th:.1f}); fine skin details cannot be clearly seen.")
         if is_light_defect:
             triggers.append(f"Lighting ({lighting_score:.1f} < {l_th:.1f})")
             flags.append("POOR_LIGHTING")
-            reasoning.append(f"Dynamic range entropy ({lighting_score:.1f} < {l_th:.1f}) is insufficient for reliable chromophore differentiation.")
+            reasoning.append(f"Lighting is too dark or uneven ({lighting_score:.1f}/100, minimum {l_th:.1f}); skin colors cannot be reliably analyzed.")
         if is_glare_defect:
             triggers.append(f"Glare ({glare_score:.1f} < {g_th:.1f})")
             flags.append("SPECULAR_GLARE")
-            reasoning.append(f"Flash reflection artifacts ({specular_pct:.1f}% specular voids) degrade lesion visualization.")
+            reasoning.append(f"Flash glare detected ({specular_pct:.1f}% of image covered by shiny reflections); part of the spot is washed out.")
         if is_occl_defect:
             triggers.append(f"Occlusion ({occlusion_score:.1f} < {o_th:.1f})")
             flags.append("BORDER_OCCLUSION")
-            reasoning.append(f"Peripheral edge obstruction ({occlusion_score:.1f} < {o_th:.1f}) suggests border clipping or dark vignetting.")
+            reasoning.append(f"The spot is too close to the photo edge or partially cut off ({occlusion_score:.1f}/100, minimum {o_th:.1f}).")
 
         if is_blur_defect or is_light_defect or is_glare_defect or is_occl_defect or is_low_overall or len(triggers) >= 2:
             status = "RE_IMAGE"
             flags.append("CRITICAL_QUALITY_FAILURE")
             if not reasoning:
-                reasoning.append(f"Composite capture quality ({overall_quality:.1f} < {q_cutoff:.1f}) is below diagnostic screening standard.")
-            summary = "Image quality failed clinical acceptance; re-capture required."
+                reasoning.append(f"Overall photo quality ({overall_quality:.1f}/100) is below the minimum required standard ({q_cutoff:.1f}) for safe screening.")
+            summary = "Photo is not clear enough for a reliable assessment; please take a new photo."
         elif overall_quality < caution_overall or len(triggers) == 1:
             status = "ACCEPTABLE_WITH_CAUTION"
             flags.append("BORDERLINE_QUALITY")
-            summary = "Image quality is acceptable with caution; minor capture artifacts noted."
+            summary = "Photo quality is fair; usable, but minor blur or lighting imperfections were noticed."
         else:
             status = "PASS"
-            summary = "Image is usable for clinical assessment with optimal sharpness and illumination."
+            summary = "Photo quality is excellent: clear, sharp, and well-lit."
 
         if not reasoning:
-            reasoning.append("Dermoscopic capture exhibits crisp microstructures, well-balanced dynamic range, and centered border visibility.")
+            reasoning.append("The photo is sharp, well-lit, free of glare, and the spot is clearly centered.")
 
         # Build formal Explaining Agent contract evidence list
         evidence = [
@@ -304,7 +304,7 @@ class ImageQualityAgent:
                 "threshold": b_th,
                 "direction": ">=",
                 "passed": not is_blur_defect,
-                "note": f"Sharpness score is {blur_score:.1f} (cutoff {b_th:.1f}; LapVar={lap_var:.1f}, Tenengrad={tenengrad:.0f})"
+                "note": f"Sharpness score is {blur_score:.1f}/100 (needs at least {b_th:.1f} to pass; clear focus)"
             },
             {
                 "feature": "lighting_entropy",
@@ -312,7 +312,7 @@ class ImageQualityAgent:
                 "threshold": l_th,
                 "direction": ">=",
                 "passed": not is_light_defect,
-                "note": f"Lighting entropy score is {lighting_score:.1f} (cutoff {l_th:.1f}; Entropy={entropy:.2f} bits, Mean={mean_brightness:.1f})"
+                "note": f"Lighting score is {lighting_score:.1f}/100 (needs at least {l_th:.1f} to pass; balanced brightness)"
             },
             {
                 "feature": "specular_glare",
@@ -320,7 +320,7 @@ class ImageQualityAgent:
                 "threshold": g_th,
                 "direction": ">=",
                 "passed": not is_glare_defect,
-                "note": f"Flash reflection score is {glare_score:.1f} (specular area {specular_pct:.2f}% vs max {g_max_pct:.1f}%)"
+                "note": f"Glare-free score is {glare_score:.1f}/100 (shiny flash covers {specular_pct:.1f}%, limit {g_max_pct:.1f}%)"
             },
             {
                 "feature": "centering_occlusion",
@@ -328,7 +328,7 @@ class ImageQualityAgent:
                 "threshold": o_th,
                 "direction": ">=",
                 "passed": not is_occl_defect,
-                "note": f"Centering score is {occlusion_score:.1f} (perimeter edge density {outer_edge_pct:.1f}% vs max {o_max_pct:.1f}%)"
+                "note": f"Centering score is {occlusion_score:.1f}/100 (spot is well positioned away from image edges)"
             },
             {
                 "feature": "composite_quality",
@@ -336,7 +336,7 @@ class ImageQualityAgent:
                 "threshold": q_cutoff,
                 "direction": ">=",
                 "passed": not is_low_overall,
-                "note": f"Overall composite quality is {overall_quality:.1f}/100 (RE_IMAGE cutoff {q_cutoff:.1f})"
+                "note": f"Overall quality score is {overall_quality:.1f}/100 (minimum {q_cutoff:.1f} needed for automated analysis)"
             }
         ]
 
@@ -358,9 +358,9 @@ class ImageQualityAgent:
 
         # 2-4 sentence plain-English reasoning
         explanation = (
-            f"Image Quality Agent evaluated capture integrity at {overall_quality:.1f}/100 resulting in disposition '{status}'. "
-            f"Sharpness was measured at {blur_score:.1f}/100 (Laplacian variance {lap_var:.1f}) and illumination entropy at {lighting_score:.1f}/100. "
-            f"{'No significant specular voids or peripheral obstruction was detected.' if status == 'PASS' else 'Identified issues: ' + '; '.join(reasoning)}"
+            f"The Image Quality Agent evaluated this photo at {overall_quality:.1f} out of 100 ({status}). "
+            f"Sharpness was measured at {blur_score:.1f}/100 and lighting at {lighting_score:.1f}/100. "
+            f"{'The photo is clear, sharp, and easy to inspect.' if status == 'PASS' else 'Issues found: ' + '; '.join(reasoning)}"
         )
 
         # Generate high-contrast edge & sharpness visualization map

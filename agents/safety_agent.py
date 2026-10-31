@@ -89,11 +89,11 @@ class SafetyAgent:
 
         # --- Rule S1: Residual / Predicted Malignancy Risk ---
         s1_fired = False
-        s1_reason = "No abnormal malignancy probability detected."
+        s1_reason = "No signs of skin cancer or abnormal risk detected."
         if s1_enabled:
             if pred_code in {'mel', 'bcc', 'akiec'} or pred_class in self.malignant_classes:
                 s1_fired = True
-                s1_reason = f"Primary predicted class is malignant '{pred_class}' [{pred_code}] ({confidence*100:.1f}% confidence)."
+                s1_reason = f"Primary predicted class is potentially serious '{pred_class}' [{pred_code}] ({confidence*100:.1f}% confidence)."
                 veto = True
                 triggers.append("S1:PREDICTED_MALIGNANCY")
                 conflicts.append({
@@ -101,10 +101,10 @@ class SafetyAgent:
                     "severity": "CRITICAL",
                     "detail": s1_reason
                 })
-                justifications.append(f"Model predicts malignant lesion '{pred_class}'; automated triage strictly forbidden.")
+                justifications.append(f"Model predicts potentially serious condition '{pred_class}'; doctor evaluation required.")
             elif total_malignancy_risk >= malig_thresh or mel_p >= mel_thresh:
                 s1_fired = True
-                s1_reason = f"Cumulative malignant prob mass {total_malignancy_risk*100:.1f}% >= {malig_thresh*100:.0f}% or Mel prob {mel_p*100:.1f}% >= {mel_thresh*100:.0f}%."
+                s1_reason = f"Combined skin cancer risk ({total_malignancy_risk*100:.1f}%) or melanoma risk ({mel_p*100:.1f}%) exceeds safety ceiling ({malig_thresh*100:.0f}%)."
                 veto = True
                 triggers.append("S1:RESIDUAL_MALIGNANCY_RISK")
                 conflicts.append({
@@ -112,7 +112,7 @@ class SafetyAgent:
                     "severity": "HIGH",
                     "detail": s1_reason
                 })
-                justifications.append(f"Residual malignancy probability ({total_malignancy_risk*100:.1f}%) exceeds safety threshold.")
+                justifications.append(f"Residual cancer probability ({total_malignancy_risk*100:.1f}%) exceeds safety threshold.")
         rules_evaluated.append({
             "id": "S1",
             "name": "Residual / Predicted Malignancy",
@@ -122,12 +122,12 @@ class SafetyAgent:
 
         # --- Rule S2: Benign Diagnosis vs Suspicious ABCD Lesion Cues ---
         s2_fired = False
-        s2_reason = "Lesion morphometry is concordant with benign diagnosis."
+        s2_reason = "Spot shape, borders, and color are consistent with a harmless mole."
         if s2_enabled and pred_code in {'nv', 'bkl', 'df', 'vasc'}:
             has_abcd_discordance = (tds_score > 5.20) or (border_pts >= 6 and asym_pts >= 1) or (lesion_suspicion >= 0.65) or (lesion_status == "SUSPICIOUS")
             if has_abcd_discordance:
                 s2_fired = True
-                s2_reason = f"Diagnostic classifier predicts benign '{pred_code}', but ABCD analysis reveals suspicious cues (TDS={tds_score:.2f}, Border={border_pts}/8, Asymmetry={asym_pts}/2)."
+                s2_reason = f"Mismatch: Model predicts a harmless spot ({pred_code}), but visual analysis shows irregular borders or uneven shape (TDS score {tds_score:.2f}, border irregularity {border_pts}/8)."
                 veto = True
                 triggers.append("S2:LESION_ABCD_DISCORDANCE")
                 conflicts.append({
@@ -135,7 +135,7 @@ class SafetyAgent:
                     "severity": "HIGH",
                     "detail": s2_reason
                 })
-                justifications.append(f"Structural conflict detected: Diagnosis predicts benign '{pred_class}', but visual ABCD analysis raises suspicion (TDS: {tds_score:.2f}).")
+                justifications.append(f"Visual check disagreement: Predicted harmless '{pred_class}', but physical features show irregularities (TDS: {tds_score:.2f}).")
         rules_evaluated.append({
             "id": "S2",
             "name": "ABCD Lesion Structural Discordance",
@@ -145,12 +145,12 @@ class SafetyAgent:
 
         # --- Rule S3: Diagnostic Ambiguity (Small Top-2 Margin or High Entropy) ---
         s3_fired = False
-        s3_reason = "Diagnostic differential shows decisive margin and controlled entropy."
+        s3_reason = "Diagnosis is clear and distinct from other conditions."
         if s3_enabled and pred_code in {'nv', 'bkl', 'df', 'vasc'}:
             is_ambiguous = (margin < margin_min) or (entropy > max_entropy)
             if is_ambiguous:
                 s3_fired = True
-                s3_reason = f"Top-2 margin ({margin:.2f} < {margin_min:.2f}) or Shannon entropy ({entropy:.2f} > {max_entropy:.2f}) indicates differential ambiguity."
+                s3_reason = f"Borderline call: Small gap between top choices ({margin*100:.1f}%) or spread-out probabilities makes diagnosis uncertain."
                 veto = True
                 triggers.append("S3:DIAGNOSTIC_AMBIGUITY")
                 conflicts.append({
@@ -158,7 +158,7 @@ class SafetyAgent:
                     "severity": "MODERATE",
                     "detail": s3_reason
                 })
-                justifications.append(f"Diagnostic ambiguity detected: Top-2 margin ({margin:.2f}) or entropy ({entropy:.2f} bits) exceeds safety tolerance.")
+                justifications.append(f"Diagnostic uncertainty: Top candidate margin ({margin*100:.1f}%) is too close to clear safely without a doctor.")
         rules_evaluated.append({
             "id": "S3",
             "name": "Diagnostic Ambiguity",
@@ -168,10 +168,10 @@ class SafetyAgent:
 
         # --- Rule S4: Demographic Context Discordance ---
         s4_fired = False
-        s4_reason = "Demographic context is concordant with benign diagnosis."
+        s4_reason = "Patient demographics align with the predicted condition."
         if s4_enabled and pred_code in {'nv', 'bkl', 'df'} and context_risk in {"HIGH", "VERY_HIGH"} and confidence < context_conf_req:
             s4_fired = True
-            s4_reason = f"Benign '{pred_code}' diagnosed in high-risk demographic (Age: {age if age else 'Unk'}, Site: '{loc if loc else 'Unk'}') with confidence {confidence*100:.1f}% < {context_conf_req*100:.0f}%."
+            s4_reason = f"Caution: A benign prediction in a higher-risk patient (Age: {age if age else 'Unspecified'}, Location: '{loc if loc else 'Unspecified'}') requires higher confidence ({confidence*100:.1f}% vs needed {context_conf_req*100:.0f}%)."
             veto = True
             triggers.append("S4:CONTEXT_DEMOGRAPHIC_DISCORDANCE")
             conflicts.append({
@@ -179,7 +179,7 @@ class SafetyAgent:
                 "severity": "MODERATE",
                 "detail": s4_reason
             })
-            justifications.append(f"Context conflict detected: Automated benign diagnosis in high-risk demographic presentation requires {context_conf_req*100:.0f}% confidence.")
+            justifications.append(f"Demographic safety check: Older age or sun-exposed location warrants doctor confirmation.")
         rules_evaluated.append({
             "id": "S4",
             "name": "Demographic Context Discordance",
@@ -189,11 +189,11 @@ class SafetyAgent:
 
         # --- Rule S5: Image Quality Caution / Degradation Discharge Block ---
         s5_fired = False
-        s5_reason = "Image quality meets screening requirements."
+        s5_reason = "Photo quality meets screening requirements."
         if s5_enabled:
             if quality_status == 'RE_IMAGE':
                 s5_fired = True
-                s5_reason = f"Image quality gatekeeper failed capture ({', '.join(triggered_defects) if triggered_defects else 'RE_IMAGE'})."
+                s5_reason = f"Photo quality issue: Cannot safely clear this spot due to poor image clarity ({', '.join(triggered_defects) if triggered_defects else 'RE_IMAGE'})."
                 veto = True
                 triggers.append("S5:QUALITY_FAILURE_BLOCK")
                 conflicts.append({
@@ -201,10 +201,10 @@ class SafetyAgent:
                     "severity": "CRITICAL",
                     "detail": s5_reason
                 })
-                justifications.append("Capture quality failed clinical acceptance; autonomous triage prohibited on compromised imagery.")
+                justifications.append("Photo quality failed clinical acceptance; clear retake needed before safe screening.")
             elif quality_status == 'ACCEPTABLE_WITH_CAUTION' and confidence < caution_conf_req:
                 s5_fired = True
-                s5_reason = f"Borderline capture quality combined with non-definitive confidence ({confidence*100:.1f}% < {caution_conf_req*100:.0f}%)."
+                s5_reason = f"Borderline photo clarity: Image is slightly degraded, requiring higher diagnostic confidence than {confidence*100:.1f}%."
                 veto = True
                 triggers.append("S5:QUALITY_CAUTION_DISCHARGE_BLOCK")
                 conflicts.append({
@@ -212,7 +212,7 @@ class SafetyAgent:
                     "severity": "LOW",
                     "detail": s5_reason
                 })
-                justifications.append(f"Quality caution requires heightened confidence ({caution_conf_req*100:.0f}%); specialist referral advised.")
+                justifications.append(f"Quality caution: Fair photo clarity requires higher confidence ({caution_conf_req*100:.0f}%); doctor check advised.")
         rules_evaluated.append({
             "id": "S5",
             "name": "Capture Degradation Discharge Block",
@@ -222,10 +222,10 @@ class SafetyAgent:
 
         # --- Rule S6: Test-Time Augmentation Disagreement ---
         s6_fired = False
-        s6_reason = "Test-time view predictions are geometrically stable."
+        s6_reason = "Predictions remain steady when viewing the spot from different angles."
         if s6_enabled and tta_disag > tta_thresh:
             s6_fired = True
-            s6_reason = f"TTA view standard deviation ({tta_disag:.3f}) exceeds threshold ({tta_thresh:.3f})."
+            s6_reason = f"Angle sensitivity: Prediction shifted when rotating or flipping the image ({tta_disag:.2f} variation)."
             veto = True
             triggers.append("S6:TTA_DISAGREEMENT")
             conflicts.append({
@@ -233,7 +233,7 @@ class SafetyAgent:
                 "severity": "MODERATE",
                 "detail": s6_reason
             })
-            justifications.append(f"Model instability across rotations/flips ({tta_disag:.3f} > {tta_thresh:.3f}) indicates borderline morphology.")
+            justifications.append(f"Visual angle sensitivity: Variations across image rotations suggest subtle or borderline features.")
         rules_evaluated.append({
             "id": "S6",
             "name": "Test-Time Augmentation Disagreement",
@@ -285,12 +285,22 @@ class SafetyAgent:
         if safety_flag == "PASS":
             summary = "All clinical safety checks passed; no cross-agent conflicts detected."
         else:
-            summary = f"Safety Sentinel issued {safety_flag}: {triggers[0]}."
+            trigger_labels = {
+                "S1:PREDICTED_MALIGNANCY": "Potential skin cancer predicted",
+                "S1:RESIDUAL_MALIGNANCY_RISK": "Elevated cancer probability",
+                "S2:LESION_ABCD_DISCORDANCE": "Spot has irregular borders or shape",
+                "S3:DIAGNOSTIC_AMBIGUITY": "Borderline call between multiple conditions",
+                "S4:CONTEXT_DEMOGRAPHIC_DISCORDANCE": "Higher demographic background risk",
+                "S5:QUALITY_FAILURE_BLOCK": "Photo quality too low for automated clearance",
+                "S5:QUALITY_CAUTION_DISCHARGE_BLOCK": "Borderline photo quality needs doctor check",
+                "S6:TTA_DISAGREEMENT": "Prediction varies with viewing angle"
+            }
+            friendly_trig = trigger_labels.get(triggers[0], triggers[0]) if triggers else "Safety check flagged"
+            summary = f"Safety check raised: {friendly_trig}."
 
         explanation = (
-            f"Safety Agent audited cross-agent consistency across 6 sentinel rules resulting in '{safety_flag}'. "
-            f"{'Autonomous triage clearance approved with zero clinical conflicts.' if not veto else f'{len(conflicts)} conflict(s) detected: ' + '; '.join(justifications[:2])} "
-            f"Primary trigger: {triggers[0] if triggers else 'NONE'}."
+            f"The Safety Agent reviewed all agent findings across 6 safety checks resulting in '{safety_flag}'. "
+            f"{'All checks passed: Diagnosis, physical features, photo quality, and patient background are in full agreement.' if not veto else f'{len(conflicts)} conflict(s) detected: ' + '; '.join(justifications[:2])}"
         )
 
         runtime_ms = round((time.perf_counter() - t0) * 1000.0, 1)
