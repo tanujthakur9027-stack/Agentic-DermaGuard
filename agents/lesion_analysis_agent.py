@@ -292,21 +292,28 @@ class LesionAnalysisAgent:
 
     def analyze(self, pil_img: Image.Image, custom_thresholds: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
-        Executes full ABCD dermoscopic analysis:
+        Executes full ABCD dermoscopic analysis adhering to Explaining Agent contract:
           1. Segments lesion & extracts edge boundary.
           2. Computes A (Asymmetry), B (Border), C (Color), D (Diameter).
           3. Computes Total Dermoscopy Score (TDS):
              TDS = 1.3*A + 0.1*B + 0.5*C + 0.5*D
           4. Generates visual edge map with overlaid centroid & asymmetry crosshairs.
         """
+        import time
+        t0 = time.perf_counter()
         th = get_flat_thresholds(custom_thresholds)
-        tds_benign = th.get("tds_benign_upper", 4.75)
-        tds_indet = th.get("tds_indeterminate_upper", 5.45)
-        susp_benign = th.get("suspicion_benign_upper", 0.35)
-        susp_indet = th.get("suspicion_indeterminate_upper", 0.55)
-        w_a = th.get("asymmetry_weight", self.asymmetry_weight)
-        w_b = th.get("border_weight", self.border_weight)
-        w_c = th.get("color_weight", self.color_weight)
+        tds_benign = float(th.get("tds_benign_upper", 4.75))
+        tds_indet = float(th.get("tds_indeterminate_upper", 5.45))
+        susp_benign = float(th.get("suspicion_indeterminate_from", th.get("suspicion_benign_upper", 0.35)))
+        susp_indet = float(th.get("suspicion_suspicious_from", th.get("suspicion_indeterminate_upper", 0.55)))
+        w_a = float(th.get("asymmetry_weight", self.asymmetry_weight))
+        w_b = float(th.get("border_weight", self.border_weight))
+        w_c = float(th.get("color_weight", self.color_weight))
+
+        asym_high = float(th.get("asymmetry_high", 0.35))
+        b_compact_high = float(th.get("border_compactness_high", 1.60))
+        c_var_high = float(th.get("color_variation_high", 32.0))
+        min_area_pct = float(th.get("min_lesion_area_pct", 2.0))
 
         img_resized = pil_img.convert('RGB').resize((224, 224))
         arr_rgb = np.array(img_resized, dtype=np.float32)
@@ -314,6 +321,9 @@ class LesionAnalysisAgent:
         # 1. Segmentation
         mask, touches_border, (cy, cx) = self.segment_lesion(arr_rgb)
         edge_map = self.compute_edge_map(mask)
+        total_pixels = 224 * 224
+        lesion_pixels = int(np.sum(mask))
+        area_pct = round((lesion_pixels / total_pixels) * 100.0, 2)
 
         # 2. ABCD Metrics
         a_cont, a_pts, a_data = self.compute_abcd_asymmetry(mask, (cy, cx))
@@ -340,14 +350,21 @@ class LesionAnalysisAgent:
             tds_assessment = f"BENIGN (TDS < {tds_benign:.2f})"
             suspicion_level = "BENIGN_CUES"
 
-        # 4. Reliability Flags
+        # 4. Reliability Flags & Contract Flags
         reliability_flags = []
+        flags = []
         if touches_border:
             reliability_flags.append("BORDER_TRUNCATION: Lesion touches image perimeter; border/asymmetry partially obscured")
-        if np.sum(mask) < 250:
-            reliability_flags.append("SMALL_LESION: Limited pixel count for high-frequency octant analysis")
-        if b_data["compactness"] > 3.5:
-            reliability_flags.append("HIGH_CONVOLUTION: Complex fractal border indentations detected")
+            flags.append("BORDER_TRUNCATION")
+        if area_pct < min_area_pct:
+            reliability_flags.append(f"SMALL_LESION: Area ({area_pct:.2f}% < {min_area_pct:.1f}%) limits morphological resolution")
+            flags.append("LOW_RELIABILITY")
+        if b_data["compactness"] > b_compact_high:
+            flags.append("JAGGED_BORDER")
+        if a_pts >= 1 or a_cont > asym_high:
+            flags.append("HIGH_ASYMMETRY")
+        if c_pts >= 3:
+            flags.append("POLYCHROMATIC")
 
         # 5. Generate Visual Edge Map Overlay with Centroid and Crosshair Axes
         overlay_arr = np.array(img_resized, dtype=np.uint8)
@@ -396,7 +413,96 @@ class LesionAnalysisAgent:
             f"Colors={c_pts}/6 shades ({', '.join(c_data['colors_found'][:3])})."
         )
 
+        # Explaining Agent Contract: Evidence
+        evidence = [
+            {
+                "feature": "border_irregularity",
+                "value": round(float(b_data["compactness"]), 2),
+                "threshold": b_compact_high,
+                "direction": "<=",
+                "passed": b_data["compactness"] <= b_compact_high,
+                "note": f"Border compactness is {b_data['compactness']:.2f} (cutoff {b_compact_high:.2f}; score {b_pts}/8 octants)"
+            },
+            {
+                "feature": "geometric_asymmetry",
+                "value": round(float(a_cont), 3),
+                "threshold": asym_high,
+                "direction": "<=",
+                "passed": a_cont <= asym_high,
+                "note": f"Asymmetry fold ratio is {a_cont:.2f} ({a_pts}/2 axes with significant difference)"
+            },
+            {
+                "feature": "color_variegation",
+                "value": round(float(c_data.get("mean_channel_std", 25.0)), 1),
+                "threshold": c_var_high,
+                "direction": "<=",
+                "passed": c_data.get("mean_channel_std", 25.0) <= c_var_high,
+                "note": f"Color standard deviation is {c_data.get('mean_channel_std', 25.0):.1f} ({c_pts}/6 chromophores: {', '.join(c_data['colors_found'][:2])})"
+            },
+            {
+                "feature": "total_dermoscopy_score",
+                "value": round(float(tds_score), 2),
+                "threshold": tds_indet,
+                "direction": "<=",
+                "passed": tds_score <= tds_indet,
+                "note": f"Stolz TDS score is {tds_score:.2f} (benign upper: {tds_benign:.2f}, suspicious upper: {tds_indet:.2f})"
+            },
+            {
+                "feature": "lesion_area_fraction",
+                "value": area_pct,
+                "threshold": min_area_pct,
+                "direction": ">=",
+                "passed": area_pct >= min_area_pct,
+                "note": f"Lesion covers {area_pct:.1f}% of image field (min reliability {min_area_pct:.1f}%)"
+            }
+        ]
+
+        thresholds_used = {
+            "border_compactness_high": b_compact_high,
+            "asymmetry_high": asym_high,
+            "color_variation_high": c_var_high,
+            "suspicion_indeterminate_from": susp_benign,
+            "suspicion_suspicious_from": susp_indet,
+            "min_lesion_area_pct": min_area_pct
+        }
+
+        margin_to_threshold = {
+            "border_compactness_high": round(float(b_compact_high - b_data["compactness"]), 2),
+            "asymmetry_high": round(float(asym_high - a_cont), 3),
+            "suspicion_suspicious_from": round(float(susp_indet - suspicion_score), 3)
+        }
+
+        if suspicion_level == "SUSPICIOUS":
+            plain_summary = "Border irregularity and structural asymmetry raise dermoscopic suspicion."
+        elif suspicion_level == "INDETERMINATE":
+            plain_summary = "Lesion exhibits intermediate structural complexity warranting caution."
+        else:
+            plain_summary = "Lesion demonstrates regular borders and symmetrical architecture characteristic of benign nevi."
+
+        explanation = (
+            f"Lesion Analysis Agent computed an ABCD suspicion score of {suspicion_score:.2f} (TDS={tds_score:.2f}, {tds_assessment}). "
+            f"Border compactness was evaluated at {b_data['compactness']:.2f} ({b_pts}/8 notched octants) with {a_pts}/2 geometric asymmetry axes. "
+            f"Color analysis revealed {c_pts}/6 distinct dermoscopic pigments across a lesion area of {area_pct:.1f}%."
+        )
+
+        conf_in_agent = 0.65 if "LOW_RELIABILITY" in flags else 0.85
+        runtime_ms = round((time.perf_counter() - t0) * 1000.0, 1)
+
         return {
+            # Explaining Agent Contract
+            "agent": "A3",
+            "name": "Lesion Analysis",
+            "status": suspicion_level,
+            "score": suspicion_score,
+            "summary": plain_summary,
+            "evidence": evidence,
+            "thresholds_used": thresholds_used,
+            "margin_to_threshold": margin_to_threshold,
+            "flags": flags,
+            "explanation": explanation,
+            "confidence_in_this_agent": conf_in_agent,
+            "runtime_ms": runtime_ms,
+            # Preserved legacy fields
             "agent_id": "A3",
             "agent_name": "Lesion Analysis Agent",
             "suspicion_score": suspicion_score,
@@ -417,7 +523,7 @@ class LesionAnalysisAgent:
             },
             "reliability_flags": reliability_flags,
             "edge_map_b64": edge_map_b64,
-            "summary": summary_narrative
+            "summary_narrative": summary_narrative
         }
 
 # Singleton instance

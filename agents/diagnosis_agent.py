@@ -3,6 +3,7 @@ from PIL import Image
 from typing import Dict, Tuple, List, Optional, Any
 from pathlib import Path
 import json
+import time
 from thresholds import load_thresholds, get_flat_thresholds
 
 try:
@@ -108,11 +109,11 @@ class DiagnosisAgent:
       - df: Dermatofibroma
       - vasc: Vascular lesion
     Provides:
+      - Explaining Agent contract with full evidence, margins, and explanation
       - Predicted official class code & clinical disease name
       - Confidence score & 7-class probability distribution
       - Diagnostic certainty level & top-2 separation margin
       - Cumulative malignancy suspicion (mel + bcc + akiec)
-      - Clinical pathology summary
     """
 
     def __init__(self, model_path: str = "models/diagnosis_agent.pt"):
@@ -129,7 +130,7 @@ class DiagnosisAgent:
         for p in lw_paths:
             if p.exists():
                 try:
-                    with open(p, "r") as f:
+                    with open(p, "r", encoding="utf-8") as f:
                         self.lightweight_weights = json.load(f)
                     break
                 except Exception:
@@ -155,7 +156,8 @@ class DiagnosisAgent:
         self,
         probs: np.ndarray,
         tta_disagreement: float = 0.0,
-        custom_thresholds: Optional[Dict[str, Any]] = None
+        custom_thresholds: Optional[Dict[str, Any]] = None,
+        runtime_ms: float = 0.0
     ) -> Dict[str, Any]:
         codes = [IDX_TO_CODE[i] for i in range(7)]
         pred_idx = int(np.argmax(probs))
@@ -164,9 +166,12 @@ class DiagnosisAgent:
 
         # Active thresholds
         th = get_flat_thresholds(custom_thresholds)
-        margin_min = th.get("margin_minimum", 0.15)
-        max_entropy = th.get("max_entropy", 1.75)
-        tta_thresh = th.get("tta_disagreement_threshold", 0.22)
+        auto_conf_th = float(th.get("auto_triage_confidence", 0.80))
+        margin_min = float(th.get("top2_margin_min", th.get("margin_minimum", 0.10)))
+        max_entropy = float(th.get("max_entropy", 1.65))
+        malig_thresh = float(th.get("malignant_prob_threshold", 0.22))
+        mel_thresh = float(th.get("mel_prob_threshold", th.get("mel_threshold", 0.18)))
+        tta_thresh = float(th.get("tta_disagreement_threshold", 0.22))
 
         # Sort candidate probabilities
         sorted_indices = np.argsort(probs)[::-1]
@@ -202,28 +207,119 @@ class DiagnosisAgent:
 
         is_malignant = pred_code in {'mel', 'bcc', 'akiec'}
 
-        return {
-            'agent_id': 'A2',
-            'agent_name': 'Diagnosis Agent',
-            'predicted_code': pred_code,
-            'predicted_class': CODE_TO_NAME[pred_code],
-            'predicted_idx': pred_idx,
-            'confidence': round(confidence, 4),
-            'margin_to_next': margin,
-            'entropy': entropy,
-            'tta_disagreement': round(float(tta_disagreement), 4),
-            'is_ambiguous': is_ambiguous,
-            'diagnostic_certainty': certainty,
-            'cumulative_malignancy_risk': cum_malig,
-            'is_malignant': is_malignant,
-            'all_probabilities': all_probs_code,
-            'all_probabilities_by_name': all_probs_name,
-            'top_3': top_3,
-            'clinical_description': CLINICAL_DESCRIPTIONS.get(pred_code, ""),
-            'summary': f"Pathology predicted as '{CODE_TO_NAME[pred_code]}' [{pred_code}] with {confidence*100:.1f}% confidence ({certainty}, margin: {margin:.2f}, entropy: {entropy:.2f})."
+        flags = []
+        if is_malignant:
+            flags.append("MALIGNANCY_PREDICTED")
+        if is_ambiguous:
+            flags.append("DIFFERENTIAL_AMBIGUITY")
+        if confidence >= auto_conf_th and not is_malignant:
+            flags.append("HIGH_CONFIDENCE_BENIGN")
+        if tta_disagreement > tta_thresh:
+            flags.append("TTA_INSTABILITY")
+
+        # Formal Explaining Agent contract evidence list
+        evidence = [
+            {
+                "feature": "auto_triage_confidence",
+                "value": round(confidence, 4),
+                "threshold": auto_conf_th,
+                "direction": ">=",
+                "passed": confidence >= auto_conf_th,
+                "note": f"Primary confidence is {confidence*100:.1f}% (hurdle: {auto_conf_th*100:.0f}%)"
+            },
+            {
+                "feature": "top2_margin",
+                "value": margin,
+                "threshold": margin_min,
+                "direction": ">=",
+                "passed": margin >= margin_min,
+                "note": f"Top-2 margin is {margin:.3f} between '{pred_code}' and '{codes[sorted_indices[1]]}' (min: {margin_min:.3f})"
+            },
+            {
+                "feature": "shannon_entropy",
+                "value": entropy,
+                "threshold": max_entropy,
+                "direction": "<=",
+                "passed": entropy <= max_entropy,
+                "note": f"Distribution entropy is {entropy:.2f} bits (max: {max_entropy:.2f} bits)"
+            },
+            {
+                "feature": "cumulative_malignancy_risk",
+                "value": cum_malig,
+                "threshold": malig_thresh,
+                "direction": "<=",
+                "passed": cum_malig <= malig_thresh,
+                "note": f"Combined malignant risk (mel+bcc+akiec) is {cum_malig*100:.1f}% (cutoff: {malig_thresh*100:.1f}%)"
+            },
+            {
+                "feature": "melanoma_risk",
+                "value": round(mel_p, 4),
+                "threshold": mel_thresh,
+                "direction": "<=",
+                "passed": mel_p <= mel_thresh,
+                "note": f"Melanoma probability is {mel_p*100:.1f}% (cutoff: {mel_thresh*100:.1f}%)"
+            }
+        ]
+
+        thresholds_used = {
+            "auto_triage_confidence": auto_conf_th,
+            "top2_margin_min": margin_min,
+            "max_entropy": max_entropy,
+            "malignant_prob_threshold": malig_thresh,
+            "mel_prob_threshold": mel_thresh
         }
 
-    def predict_numpy_fallback(self, pil_img: Image.Image, custom_thresholds: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        margin_to_threshold = {
+            "auto_triage_confidence": round(confidence - auto_conf_th, 4),
+            "top2_margin_min": round(margin - margin_min, 4),
+            "max_entropy": round(max_entropy - entropy, 4),
+            "malignant_prob_threshold": round(malig_thresh - cum_malig, 4),
+            "mel_prob_threshold": round(mel_thresh - mel_p, 4)
+        }
+
+        summary = f"Model predicts {CODE_TO_NAME[pred_code]} [{pred_code}] with {confidence*100:.1f}% confidence."
+
+        explanation = (
+            f"Diagnosis Agent classified the dermoscopic lesion as '{CODE_TO_NAME[pred_code]}' ({pred_code}) with {confidence*100:.1f}% primary probability. "
+            f"The top-2 candidate separation margin is {margin:.3f} and Shannon entropy is {entropy:.2f} bits ({certainty}). "
+            f"Cumulative malignancy probability is {cum_malig*100:.1f}% (Melanoma: {mel_p*100:.1f}%, BCC: {bcc_p*100:.1f}%, AKIEC: {akiec_p*100:.1f}%)."
+        )
+
+        return {
+            # Explaining Agent Contract fields
+            "agent": "A2",
+            "name": "Diagnosis",
+            "status": pred_code,
+            "score": round(confidence, 4),
+            "summary": summary,
+            "evidence": evidence,
+            "thresholds_used": thresholds_used,
+            "margin_to_threshold": margin_to_threshold,
+            "flags": flags,
+            "explanation": explanation,
+            "confidence_in_this_agent": round(confidence, 4),
+            "runtime_ms": runtime_ms,
+            # Preserved legacy fields
+            "agent_id": "A2",
+            "agent_name": "Diagnosis Agent",
+            "predicted_code": pred_code,
+            "predicted_class": CODE_TO_NAME[pred_code],
+            "predicted_idx": pred_idx,
+            "confidence": round(confidence, 4),
+            "margin_to_next": margin,
+            "entropy": entropy,
+            "tta_disagreement": round(float(tta_disagreement), 4),
+            "is_ambiguous": is_ambiguous,
+            "diagnostic_certainty": certainty,
+            "cumulative_malignancy_risk": cum_malig,
+            "is_malignant": is_malignant,
+            "all_probabilities": all_probs_code,
+            "all_probabilities_by_name": all_probs_name,
+            "top_3": top_3,
+            "clinical_description": CLINICAL_DESCRIPTIONS.get(pred_code, "")
+        }
+
+    def predict_numpy_fallback(self, pil_img: Image.Image, custom_thresholds: Optional[Dict[str, Any]] = None, t0: float = 0.0) -> Dict[str, Any]:
         """Learned feature statistical classifier fallback when PyTorch weights are unavailable."""
         img_rgb = pil_img.convert('RGB').resize((128, 128))
         arr = np.array(img_rgb, dtype=np.float32) / 255.0
@@ -236,11 +332,9 @@ class DiagnosisAgent:
 
         if self.lightweight_weights is not None:
             try:
-                # 1. Color moments
                 mean_r, mean_g, mean_b = float(r.mean()), float(g.mean()), float(b.mean())
                 std_r, std_g, std_b = float(r.std()), float(g.std()), float(b.std())
 
-                # 2. HSV saturation and value
                 v = np.max(arr, axis=2)
                 min_rgb = np.min(arr, axis=2)
                 delta = v - min_rgb
@@ -248,12 +342,10 @@ class DiagnosisAgent:
                 mean_sat, std_sat = float(sat.mean()), float(sat.std())
                 mean_v, std_v = float(v.mean()), float(v.std())
 
-                # 3. Pathological cues
                 dark_melanin = float(np.sum((r < 0.32) & (g < 0.24) & (b < 0.24)) / arr.size)
                 red_ratio = float(np.sum((r > 0.55) & (r > 1.35 * (g + b) / 2.0)) / arr.size)
                 blue_gray = float(np.sum((b > g) & (b > r) & (sat > 0.15)) / arr.size)
 
-                # 4. Center vs periphery contrast
                 h, w = r.shape
                 c_y, c_x = h // 4, w // 4
                 center_patch = arr[c_y:h-c_y, c_x:w-c_x]
@@ -261,7 +353,6 @@ class DiagnosisAgent:
                 outer_mask[c_y:h-c_y, c_x:w-c_x] = False
                 contrast = float(np.linalg.norm(center_patch.mean(axis=(0, 1)) - arr[outer_mask].mean(axis=0)))
 
-                # 5. Roughness
                 gray = 0.299 * r + 0.587 * g + 0.114 * b
                 roughness = float(np.mean(np.abs(gray[1:, :] - gray[:-1, :])) + np.mean(np.abs(gray[:, 1:] - gray[:, :-1])))
 
@@ -274,7 +365,6 @@ class DiagnosisAgent:
                     contrast, roughness
                 ], dtype=np.float32)
 
-                # Standardize & forward pass through linear layer
                 scaler_mean = np.array(self.lightweight_weights['scaler_mean'])
                 scaler_scale = np.array(self.lightweight_weights['scaler_scale'])
                 coef = np.array(self.lightweight_weights['coef'])
@@ -286,7 +376,8 @@ class DiagnosisAgent:
                 
                 exp_l = np.exp(scaled_logits - np.max(scaled_logits))
                 probs = exp_l / np.sum(exp_l)
-                return self._package_prediction(probs, tta_disagreement=0.0, custom_thresholds=custom_thresholds)
+                runtime_ms = round((time.perf_counter() - t0) * 1000.0, 1)
+                return self._package_prediction(probs, tta_disagreement=0.0, custom_thresholds=custom_thresholds, runtime_ms=runtime_ms)
             except Exception:
                 pass
 
@@ -311,10 +402,12 @@ class DiagnosisAgent:
         scaled_scores = (score_arr * 2.5 / temp) + bias_arr
         exp_s = np.exp(scaled_scores - np.max(scaled_scores))
         probs = exp_s / exp_s.sum()
-        return self._package_prediction(probs, tta_disagreement=0.0, custom_thresholds=custom_thresholds)
+        runtime_ms = round((time.perf_counter() - t0) * 1000.0, 1)
+        return self._package_prediction(probs, tta_disagreement=0.0, custom_thresholds=custom_thresholds, runtime_ms=runtime_ms)
 
     def predict(self, image_input: Any, custom_thresholds: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """Executes diagnostic inference on image input with TTA, temperature scaling, and class bias."""
+        t0 = time.perf_counter()
         th = get_flat_thresholds(custom_thresholds)
         temp = max(0.01, float(th.get("temperature", 1.0)))
         tta_enabled = bool(th.get("tta_enabled", True))
@@ -335,7 +428,6 @@ class DiagnosisAgent:
             try:
                 with torch.no_grad():
                     if pil_img is not None and tta_enabled:
-                        # 4-view Test-Time Augmentation (Original, H-Flip, V-Flip, Rotate 180)
                         v1 = pil_img
                         v2 = pil_img.transpose(Image.FLIP_LEFT_RIGHT)
                         v3 = pil_img.transpose(Image.FLIP_TOP_BOTTOM)
@@ -350,7 +442,8 @@ class DiagnosisAgent:
                         mean_probs = np.mean(probs_views, axis=0)
                         mean_probs = mean_probs / np.sum(mean_probs)
                         tta_disagreement = float(np.max(np.std(probs_views, axis=0)))
-                        return self._package_prediction(mean_probs, tta_disagreement=tta_disagreement, custom_thresholds=custom_thresholds)
+                        runtime_ms = round((time.perf_counter() - t0) * 1000.0, 1)
+                        return self._package_prediction(mean_probs, tta_disagreement=tta_disagreement, custom_thresholds=custom_thresholds, runtime_ms=runtime_ms)
 
                     elif pil_img is not None:
                         tensor = diagnosis_transforms(pil_img).unsqueeze(0).to(DEVICE)
@@ -358,7 +451,8 @@ class DiagnosisAgent:
                         scaled_logits = (raw_logits / temp) + bias_arr
                         exp_l = np.exp(scaled_logits - np.max(scaled_logits))
                         probs = exp_l / np.sum(exp_l)
-                        return self._package_prediction(probs, tta_disagreement=0.0, custom_thresholds=custom_thresholds)
+                        runtime_ms = round((time.perf_counter() - t0) * 1000.0, 1)
+                        return self._package_prediction(probs, tta_disagreement=0.0, custom_thresholds=custom_thresholds, runtime_ms=runtime_ms)
                     else:
                         if len(tensor.shape) == 3:
                             tensor = tensor.unsqueeze(0)
@@ -367,13 +461,14 @@ class DiagnosisAgent:
                         scaled_logits = (raw_logits / temp) + bias_arr
                         exp_l = np.exp(scaled_logits - np.max(scaled_logits))
                         probs = exp_l / np.sum(exp_l)
-                        return self._package_prediction(probs, tta_disagreement=0.0, custom_thresholds=custom_thresholds)
+                        runtime_ms = round((time.perf_counter() - t0) * 1000.0, 1)
+                        return self._package_prediction(probs, tta_disagreement=0.0, custom_thresholds=custom_thresholds, runtime_ms=runtime_ms)
             except Exception:
                 pass
 
         if pil_img is None:
             pil_img = Image.new('RGB', (224, 224), (180, 140, 120))
-        return self.predict_numpy_fallback(pil_img, custom_thresholds=custom_thresholds)
+        return self.predict_numpy_fallback(pil_img, custom_thresholds=custom_thresholds, t0=t0)
 
 def load_diagnosis_agent(model_path: str = 'models/diagnosis_agent.pt') -> DiagnosisAgent:
     return DiagnosisAgent(model_path=model_path)
