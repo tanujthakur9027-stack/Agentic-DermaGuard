@@ -5,6 +5,7 @@ import os
 import sys
 import urllib.request
 import urllib.error
+from typing import Dict, Any, List, Optional, Tuple, Union
 from http.server import BaseHTTPRequestHandler
 import numpy as np
 from PIL import Image, ImageFilter
