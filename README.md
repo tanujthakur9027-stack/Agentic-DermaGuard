@@ -2,177 +2,199 @@
 
 **Jaypee Agentic AI International Summit 2026 — Track 2 | Healthcare**
 
-Agentic DermaGuard is an explainable, safety-first multi-agent clinical decision support system. It combines deep learning diagnosis, computer vision edge/border mapping, demographic context reasoning, and clinical safety vetoes into a traceable final triage disposition: **`AUTO_TRIAGE`**, **`REFER`**, or **`RE_IMAGE`**.
+Agentic DermaGuard is an explainable, deterministic, safety-first multi-agent clinical decision support system for dermoscopic skin lesion screening. It coordinates six specialized agents to deliver traceable, accountable decisions: **`AUTO_TRIAGE`**, **`REFER`**, or **`RE_IMAGE`**, while preserving diagnostic predictions across all inputs.
 
 ---
 
-## 🏗️ Six-Agent Architecture (Level 2 Specification)
+## 🏛️ Six-Agent Architecture & Explaining Agent Contract
 
-```
-                            [ Dermoscopic Image + Patient Demographics ]
-                                                 │
-         ┌───────────────────┬───────────────────┼───────────────────┐
-         │                   │                   │                   │
-         ▼                   ▼                   ▼                   ▼
-┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐
-│   1. Quality    │ │  2. Diagnosis   │ │3. Lesion Analys.│ │4. Context/Reason│
-│      Agent      │ │      Agent      │ │      Agent      │ │      Agent      │
-│(Blur/Glare/Edge)│ │ (7 Class Codes) │ │(ABCD Cues/Edges)│ │ (Age/Sex/Site)  │
-└────────┬────────┘ └────────┬────────┘ └────────┬────────┘ └────────┬────────┘
-         │                   │                   │                   │
-         └───────────────────┼───────────────────┴───────────────────┘
-                             │
-                             ▼
-                    ┌─────────────────┐
-                    │    5. Safety    │
-                    │      Agent      │
-                    │(Sentinel & Veto)│
-                    └────────┬────────┘
-                             │
-                             ▼
-                    ┌─────────────────┐
-                    │ 6. Coordinator  │
-                    │      Agent      │
-                    │(Policy Engine)  │
-                    └────────┬────────┘
-                             │
-                             ▼
-    [ Final Decision: AUTO_TRIAGE / REFER / RE_IMAGE ]
-    [ Prediction Code: nv, mel, bcc, akiec, bkl, df, vasc ]
-    [ Traceable Audit: A1: PASS | A2: nv • 0.82 | A3+A4: BENIGN_CUES | A5: PASS | A6: AUTO_TRIAGE ]
+Each agent operates with a distinct clinical responsibility and strictly outputs a standard **Explaining Agent Contract**:
+```json
+{
+  "agent": "A3",
+  "name": "Lesion Analysis",
+  "status": "SUSPICIOUS",
+  "score": 0.71,
+  "summary": "Elevated border compactness and pigment asymmetry observed.",
+  "evidence": [
+    {
+      "feature": "border_irregularity",
+      "value": 1.82,
+      "threshold": 1.60,
+      "direction": ">",
+      "passed": false,
+      "note": "Border is jagged (compactness 1.82 > 1.60)"
+    }
+  ],
+  "thresholds_used": { "border_compactness_high": 1.60 },
+  "margin_to_threshold": { "border_compactness_high": 0.22 },
+  "flags": ["LOW_RELIABILITY"],
+  "explanation": "Lesion Analysis Agent identified abnormal geometric border notches...",
+  "confidence_in_this_agent": 0.80,
+  "runtime_ms": 12.4
+}
 ```
 
-### The Six Specialized Roles
+### The Six Specialized Agents
 
-1. **Agent 1: Image Quality Agent (`agents/image_quality_agent.py`)**
-   - **Metrics:** Combined Laplacian variance & Tenengrad gradient for blur/sharpness, histogram entropy for lighting dynamic range, HSV V-channel specular glare saturation, and edge-centering obstruction.
-   - **Outputs:** Quality status (`PASS`, `ACCEPTABLE_WITH_CAUTION`, `RE_IMAGE`), scores (0–100), defect triggers, and visual sharpness gradient map.
+1. **A1: Image Quality Agent (`agents/image_quality_agent.py`)**
+   - **Role:** Gatekeeper for capture integrity.
+   - **Evaluated Dimensions:** Laplacian variance & Tenengrad gradient (sharpness/blur), grayscale histogram entropy (illumination dynamic range), HSV V-channel specular saturation clip (flash glare voids), and perimeter edge density (obstruction/vignetting).
+   - **Status:** `PASS`, `ACCEPTABLE_WITH_CAUTION`, `RE_IMAGE`.
 
-2. **Agent 2: Diagnosis Agent (`agents/diagnosis_agent.py`)**
-   - **Classification:** 7 official HAM10000 disease class codes:
+2. **A2: Diagnosis Agent (`agents/diagnosis_agent.py`)**
+   - **Role:** Pathology classifier for 7 official HAM10000 disease classes:
      - `mel`: Melanoma (malignant)
-     - `nv`: Melanocytic nevus (benign mole)
+     - `nv`: Melanocytic nevus (benign)
      - `bcc`: Basal cell carcinoma (malignant)
      - `akiec`: Actinic keratoses (pre-malignant)
      - `bkl`: Benign keratosis-like lesions
-     - `df`: Dermatofibroma (benign nodule)
-     - `vasc`: Vascular lesions (angioma)
-   - **Outputs:** Predicted class code, full probability distribution, confidence score, and top-3 differential diagnosis.
+     - `df`: Dermatofibroma (benign)
+     - `vasc`: Vascular lesions (benign)
+   - **Outputs:** Predicted class code, confidence score, differential probability distribution, Shannon entropy, top-2 separation margin, and cumulative malignancy risk mass (\(p_{mel} + p_{bcc} + p_{akiec}\)).
 
-3. **Agent 3: Lesion Analysis Agent (`agents/lesion_analysis_agent.py`)**
-   - **ABCD Visual Cues:**
-     - **Border Irregularity (B):** Compactness / Isoperimetric quotient \(P^2 / 4\pi A\) (circle = 1.0; jagged/notched borders > 1.6), and radial distance variance.
-     - **Asymmetry (A):** Non-overlapping area fraction across horizontal and vertical centroid folds.
-     - **Color Variation (C):** RGB channel standard deviation and dark melanin / erythema variegation.
-   - **Edge Mapping:** Computes and exports high-contrast boundary contour overlay (PNG base64).
-   - **Outputs:** Suspicion score (0.0 to 1.0), suspicion level (`BENIGN_CUES`, `INDETERMINATE`, `SUSPICIOUS`), and reliability flags.
+3. **A3: Lesion Analysis Agent (`agents/lesion_analysis_agent.py`)**
+   - **Role:** ABCD visual morphometry and contour boundary detection.
+   - **Features:** Compactness quotient (\(P^2 / 4\pi A\)), radial distance variance, asymmetry fold ratio across horizontal/vertical centroid axes, channel color standard deviation, and Stolz Total Dermoscopy Score (TDS).
+   - **Status:** `BENIGN_CUES`, `INDETERMINATE`, `SUSPICIOUS`.
 
-4. **Agent 4: Reasoning / Context Agent (`agents/context_agent.py`)**
-   - **Clinical Context:** Stratifies cumulative solar exposure and malignancy incidence across `age`, `sex`/gender, and anatomical `localization`.
-   - **Missing Fields:** Detects and flags missing demographic data (`MISSING_AGE`, `MISSING_SEX`, `MISSING_LOCALIZATION`).
-   - **Outputs:** Risk indicator (`LOW`, `MODERATE`, `HIGH`, `VERY_HIGH`), demographic risk score, and clinical evidence narrative.
+4. **A4: Reasoning / Context Agent (`agents/context_agent.py`)**
+   - **Role:** Epidemiological context and patient demographics reasoning.
+   - **Features:** Stratification by age cohorts, biological sex weights, and high-risk anatomical sites (face, scalp, ear, neck, acral extremities). Handles missing fields cleanly with neutral priors and missing-field flags.
+   - **Status:** `LOW`, `MODERATE`, `HIGH`, `VERY_HIGH`.
 
-5. **Agent 5: Safety Agent (`agents/safety_agent.py`)**
-   - **Sentinel & Veto:** Cross-checks diagnosis against visual cues, patient demographics, and image quality.
-   - **Veto Rules:**
-     - Overrides `AUTO_TRIAGE` if benign prediction conflicts with high border irregularity or asymmetry.
-     - Overrides `AUTO_TRIAGE` if benign prediction occurs in high-risk demographic context (e.g. elderly patient with scalp/facial lesion).
-     - Overrides `AUTO_TRIAGE` on degraded images (`RE_IMAGE` or quality caution).
-   - **Outputs:** Safety flag (`PASS`, `SAFETY_FLAG`, `SAFETY_VETO`), auto-triage veto boolean, and clinical justification.
+5. **A5: Safety Sentinel (`agents/safety_agent.py`)**
+   - **Role:** Cross-agent conflict detector and safety veto engine.
+   - **Formal Rules (S1–S6):**
+     - **S1 (Malignancy Probability Mass):** Benign prediction vetoed if combined malignancy risk exceeds cutoff.
+     - **S2 (Lesion ABCD Discordance):** Benign prediction vetoed if visual ABCD cues are SUSPICIOUS.
+     - **S3 (Diagnostic Ambiguity):** Vetoed if top-2 margin is narrow or entropy is high.
+     - **S4 (High-Risk Context Discordance):** Benign prediction in elderly high-risk site without 85% confidence hurdle vetoed.
+     - **S5 (Image Quality Caution):** High caution on borderline captures.
+     - **S6 (Extreme Conflict Triad):** Simultaneous high age + high-risk site + border notch triggers mandatory specialist escalation.
 
-6. **Agent 6: Coordinator Agent (`agents/coordinator_agent.py`)**
-   - **Deterministic Policy:** Applies documented clinical triage policy:
-     1. Quality failure &rarr; `RE_IMAGE` (with diagnostic inference preserved per track rule).
-     2. Predicted malignancy (`mel`, `bcc`, `akiec`) or safety veto &rarr; `REFER`.
-     3. High-confidence benign (`nv`, `bkl`, `df`, `vasc`) with clear safety checks &rarr; `AUTO_TRIAGE`.
-     4. Diagnostic uncertainty &rarr; `REFER`.
-   - **Outputs:** Final predicted label, triage decision, and standardized traceable chain:
-     `A1: PASS | A2: nv • 0.73 | A3+A4: SUSPICIOUS | A5: SAFETY FLAG | A6: REFER`.
+6. **A6: Coordinator Agent (`agents/coordinator_agent.py`)**
+   - **Role:** Policy arbiter applying clinical decision rules to produce final predicted label, triage disposition, and traceable audit trail.
+   - **Golden Rule:** Every image receives BOTH a diagnosis prediction AND a decision. Diagnostic predictions are NEVER altered by triage logic (even under `RE_IMAGE`, preliminary diagnosis is strictly preserved).
+   - **Example Strip:**
+     `A1 PASS "Image is usable" | A2 nv • 0.73 "Model predicts nevus" | A3+A4 SUSPICIOUS "Other evidence raises concern" | A5 SAFETY FLAG "Conflict detected" | A6 REFER "Final disposition"`
 
 ---
 
-## 🎛️ Centralized Thresholds & Automatic Tuning
+## 🎛️ Centralized Threshold Registry (`backend/thresholds.py`)
 
-All tunable operational parameters and clinical cutoffs are centralized in a single source of truth: `thresholds.json` (loaded dynamically with fallback defaults via `thresholds.py`).
+All 51 operational parameters across all six agents are centralized in a unified registry (`backend/thresholds.py` + `thresholds.json`). Each parameter specifies:
+- `key`, `agent`, `label`, `default`, `min`, `max`, `step`, `unit`
+- `description`: Plain-English explanation of what the parameter controls
+- `effect_up`: Plain-English clinical consequence of raising the value
+- `effect_down`: Plain-English clinical consequence of lowering the value
 
-### 1. Parameter Specifications
+### Presets
+- **Conservative:** Higher safety margins, lower auto-triage volume, near-zero missed malignancy risk.
+- **Balanced (Default):** Calibrated operating point on 1,942 HAM10000 validation cases.
+- **Aggressive:** Lower hurdles for automated discharge in high-throughput screening clinics.
 
-| Category | Parameter | Tuned Default | Description / Clinical Rationale |
-|---|---|---|---|
-| **Quality** | `blur_threshold`<br>`lighting_threshold`<br>`glare_threshold`<br>`occlusion_threshold`<br>`quality_cutoff`<br>`caution_overall_threshold` | 40.0<br>40.0<br>70.0<br>50.0<br>50.0<br>72.0 | Combined Laplacian + Tenengrad sharpness cutoff.<br>Histogram entropy lighting dynamic range.<br>Specular saturation sensor-clip penalty (min(R,G,B) >= 246).<br>Center vs. perimeter edge density.<br>Overall composite quality required for clinical screening.<br>Upper bound of cautionary evaluation band. |
-| **Diagnosis** | `auto_triage_confidence`<br>`margin_minimum`<br>`max_entropy`<br>`temperature`<br>`tta_enabled`<br>`tta_disagreement_threshold`<br>`class_probability_bias` | 0.80<br>0.10<br>1.65<br>1.14<br>true<br>0.22<br>mel: +0.30<br>nv: +0.75<br>bcc: -0.40<br>akiec: -0.85<br>df: +0.80 | Minimum confidence required for autonomous benign triage.<br>Top-1 vs top-2 candidate probability margin separation.<br>Shannon entropy threshold guarding differential ambiguity.<br>Probability calibration scaling factor.<br>4-view Test-Time Augmentation (Original, H-Flip, V-Flip, Rot180).<br>Max standard deviation across TTA views signaling morphology instability.<br>Coordinate ascent probability biases tuned for Macro-F1. |
-| **Malignancy** | `malignant_prob_threshold`<br>`mel_threshold` | 0.22<br>0.18 | Cumulative malignancy probability mass (p_mel + p_bcc + p_akiec).<br>Strict separate threshold for invasive melanoma suspicion. |
-| **Lesion ABCD** | `suspicion_cutoffs`<br>`tds_cutoffs`<br>`asymmetry_weight`<br>`border_weight`<br>`color_weight` | Benign: <0.35, Suspicious: >0.55<br>TDS <4.75 Benign, >5.45 Suspicious<br>0.35, 0.35, 0.30 | Continuous morphometry suspicion cutoffs.<br>Stolz Total Dermoscopy Score: 1.3*A + 0.1*B + 0.5*C + 0.5*D.<br>Clinical ABCD weighting factors. |
-| **Context** | `risk_cutoffs`<br>`age_cutoffs`<br>`neutral_missing_prior` | Low: <0.45, High: >=0.70<br>25, 40, 60, 75<br>0.20 | Epidemiological risk accumulation thresholds.<br>Pediatric, Adult, Senior, Geriatric incidence cohorts.<br>Neutral prior when demographic fields are omitted (hidden test mode). |
-| **Safety S1-S6** | `s1_enabled`..`s6_enabled`<br>`caution_confidence_required`<br>`high_context_risk_conf_req` | true (all enabled)<br>0.70<br>0.85 | Named sentinel rules enforcing patient safety and vetoing AUTO_TRIAGE.<br>Required confidence when quality is borderline.<br>Required confidence in high-risk elderly/sun-damaged demographics. |
-
-### 2. Automated Tuning Methodology (`tune_thresholds.py`)
-
-1. **50/50 Grouped Stratified Split on `lesion_id`:**
-   - Evaluated across validation set (1,942 images, 1,456 unique lesions).
-   - Set A (Tuning): 971 images across 728 lesions.
-   - Set B (Confirmation): 971 images across 728 lesions.
-   - **Lesion Overlap: EXACTLY 0 (Zero data leakage)**.
-2. **Logit Calibration & Temperature Scaling:**
-   - Optimized temperature $T = 1.14$ via NLL minimization.
-   - Set A Expected Calibration Error (ECE): **3.83% &rarr; 1.64%**.
-3. **Coordinate Ascent Per-Class Bias Tuning:**
-   - Maximized multi-class Macro-F1 across 7 disease codes.
-   - Set A Macro-F1: **0.5414 &rarr; 0.6140** (confirmed on Set B at 0.5937).
-4. **Clinical Operating Point Grid Search:**
-   - Evaluated 756 combinations of confidence, margins, and malignancy thresholds.
-   - **Tuning Set A Performance:** Precision = **96.0%**, Correct AUTO_TRIAGE = 72.
-   - **Confirmation Set B Performance:** Precision = **98.4%**, Correct AUTO_TRIAGE = 60, **Missed Malignancies = 0**.
-   - Output artifacts: `outputs/threshold_sweep.csv` and `outputs/threshold_tradeoff.png`.
+Per-request threshold overrides can be passed via `{"thresholds": { ... }}` to any API call without mutating global state.
 
 ---
 
-## 🌐 Vercel Web Deployment
+## 💻 Multi-Page Frontend Architecture
 
-The application is deployed on Vercel as a full-stack serverless web application:
-- **Frontend (`public/index.html`):** Tailwind CSS + Chart.js responsive single-page web app. Features real-time edge mapping visualization, patient context selectors, threshold tuning sliders, benchmark analytics dashboard, and API submission portal.
-- **Backend API (`api/index.py`):** Serverless HTTP endpoints:
-  - `POST /api/triage`: Accepts image and clinical context; executes all 6 agents; returns decision and edge map overlay.
-  - `GET /api/benchmark`: Serves validation benchmark metrics and confusion matrix.
-  - `POST /api/submit`: Uploads benchmark results or CSV to summit endpoints.
-- **Configuration:** `vercel.json` rewrites all `/api/*` requests to `/api/index.py`.
+A pure HTML/CSS/vanilla JS frontend (no npm build steps required) served from `public/`:
+
+- **Interactive Screening (`/` or `/index.html`):** Single-image diagnostic console with dual image viewports, edge contour mapping, patient context selector, 7 curated demonstration cases, master disposition banner, required UI example strip, and 6 expandable agent cards with live evidence tables.
+- **Batch Evaluation & 200 Hidden Test (`/batch.html`):** Multi-file browser runner designed specifically for the hidden test. Dispatches calls to `/api/analyze` with a **strict browser concurrency of 3 workers** and progress bar, preventing Vercel serverless timeouts. Supports optional ground truth CSV upload to compute live Panel KPIs:
+  - Correct AUTO_TRIAGE count
+  - Incorrect AUTO_TRIAGE count
+  - Number of REFERs
+  - Number of RE_IMAGEs
+  - Accuracy & Macro-F1
+  - One-click export of official 3-column submission CSV (`image_id,prediction,decision`).
+- **Threshold Registry Explorer (`/thresholds.html`):** Full parameter tuning console showing all 51 thresholds grouped by agent, with interactive sliders, unit badges, effect tooltips, preset switches, and persistent save/reset controls.
+- **Validation Benchmark Dashboard (`/benchmark.html`):** Level 1 benchmark reporting across all 1,942 held-out images. Features KPI scorecards, interactive 7x7 confusion matrix, class-wise metrics, and 5-stage ablation study.
+
+Shared assets:
+- `public/css/app.css`: Medical UI dark/light design system, status badges, evidence tables.
+- `public/js/app.js`: Universal API client (`apiRequest`), navigation state, toast notifications, UI example strip renderer.
+- `public/js/charts.js`: Chart.js helpers for probability bars, quality radar, and confusion matrices.
 
 ---
 
-## 🚀 CLI Commands & Usage
+## 🔌 REST API Endpoints (`api/index.py`)
 
-### 1. Run Six-Agent Validation Benchmark
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/api/analyze` | Single image analysis (accepts base64 or image ID, context, thresholds override). Returns explaining agent contract. |
+| `POST` | `/api/triage` | Backward-compatible alias for `/api/analyze`. |
+| `GET` | `/api/thresholds` | Returns parameter registry, current values, and presets. |
+| `POST` | `/api/thresholds` | Updates and persists threshold values. |
+| `POST` | `/api/thresholds/reset` | Resets thresholds to defaults or a chosen preset (`Balanced`, `Conservative`, `Aggressive`). |
+| `GET` | `/api/samples` | Serves 7 curated clinical demonstration cases with embedded base64 imagery. |
+| `GET` | `/api/benchmark` | Serves validation benchmark metrics, confusion matrix, and ablation breakdown. |
+| `GET` | `/api/download` | Downloads sample submission CSV. |
+| `POST` | `/api/submit` | Relays benchmark or submission payload to summit API endpoint. |
+
+---
+
+## 🏃 Running the Application
+
+### Option 1: Standalone Python Server (Recommended for Local Dev)
 ```bash
-python evaluate.py
+python api/index.py
 ```
-Outputs:
-- `outputs/final_submission_format_sample.csv`: Sample submission file in exact competition format (`image_id,prediction,decision`).
-- `outputs/validation_detailed.csv`: Complete table of all 1,942 images with outputs from all 6 agents.
-- `outputs/validation_results.json`: Benchmark metrics and confusion matrix.
-- `outputs/validation_summary.md`: Formatted report for the evaluation panel.
+Starts the full server at `http://localhost:8000`, serving both the multi-page frontend and all API endpoints.
 
-### 2. Run Inference on 200 Hidden Test Images (Released at 10:00 AM)
+### Option 2: Legacy Streamlit UI
 ```bash
-python evaluate.py --hidden-dir <path_to_hidden_images_folder> --output-csv outputs/submission.csv
+streamlit run app.py
 ```
-Generates the exact required 3-column CSV file:
+
+### Option 3: Vercel CLI
+```bash
+vercel dev
+```
+
+---
+
+## 🧪 Hidden Test Execution (10:00 AM 200 Images Release)
+
+### Method A: Browser Batch Page (`/batch.html`)
+1. Open `http://localhost:8000/batch.html` in your browser.
+2. Drag and drop all 200 test images (or select folder).
+3. Click **"🚀 Start Batch Processing"**.
+4. The worker pool will process images with concurrency 3, displaying live progress and disposition counts.
+5. Click **"📥 Download Submission CSV"** to save `submission.csv`.
+
+### Method B: CLI Inference (`evaluate.py`)
+```bash
+python evaluate.py --hidden-dir <path_to_200_images> --output-csv outputs/submission.csv
+```
+The script processes all images, automatically handles potential file errors with safe clinical fallbacks, and validates the output with `validate_submission.py`.
+
+### Submission CSV Format Verification
+Header must be exactly:
 ```csv
 image_id,prediction,decision
 ISIC_0035001,nv,AUTO_TRIAGE
 ISIC_0035002,mel,REFER
 ISIC_0035003,bkl,RE_IMAGE
 ```
+Strict validation criteria:
+- Exactly 3 columns: `image_id`, `prediction`, `decision`
+- Exactly one row per image, no missing values, no duplicates
+- Predictions restricted to: `mel`, `nv`, `bcc`, `akiec`, `bkl`, `df`, `vasc`
+- Decisions restricted to: `AUTO_TRIAGE`, `REFER`, `RE_IMAGE`
 
-### 3. Upload Submission CSV to Summit API
+Run validation manually anytime:
 ```bash
-python submit.py --csv outputs/submission.csv --api-url <ORGANIZER_API_URL> --team-name Team-DermaGuard
+python validate_submission.py --csv outputs/submission.csv --expected-count 200
 ```
 
-### 4. Run Local Web Server
-```bash
-python -m http.server 8000 --directory public
-```
-Or with Vercel CLI:
-```bash
-vercel dev
-```
+---
+
+## 📝 Design Decisions & Ambiguities Resolved
+
+1. **Prediction Independence:** Per competition rules, diagnostic prediction is strictly separated from triage decisions. When an image fails quality checks (`RE_IMAGE`), the underlying diagnosis model still runs and records its best preliminary prediction rather than being replaced with null or an error code.
+2. **Deterministic Fallbacks:** The orchestrator never silently fails on corrupted or unreadable images. Any exception triggers a deterministic fallback row: `prediction = 'nv'`, `decision = 'REFER'`, with error flags recorded in the audit trace.
+3. **Offline Explanations:** Explanations and clinical summaries are generated deterministically via templates and computed numeric features; no external LLM APIs are invoked during inference.
+4. **Vercel Serverless Limits:** Monolithic batch POSTs are completely avoided. The batch evaluation workflow uses browser-orchestrated queuing with concurrency 3, keeping each request payload lightweight and within execution timeouts.
