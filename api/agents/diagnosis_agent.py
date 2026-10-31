@@ -123,9 +123,13 @@ class DiagnosisAgent:
         self.lightweight_weights = None
 
         # Load learned lightweight weights for serverless fallback
+        base_dir = Path(__file__).resolve().parent
         lw_paths = [
-            Path("models/lightweight_weights.json"),
-            Path(__file__).parent.parent / "models" / "lightweight_weights.json"
+            base_dir.parent / "models" / "lightweight_weights.json",
+            base_dir / "models" / "lightweight_weights.json",
+            Path.cwd() / "models" / "lightweight_weights.json",
+            Path("/var/task/models/lightweight_weights.json"),
+            Path("/var/task/api/models/lightweight_weights.json")
         ]
         for p in lw_paths:
             if p.exists():

@@ -832,15 +832,18 @@ PRESETS: Dict[str, Dict[str, Any]] = {
 _ACTIVE_THRESHOLDS: Optional[Dict[str, Any]] = None
 
 def get_thresholds_file_path() -> Path:
+    base_dir = Path(__file__).resolve().parent
     candidates = [
-        Path("thresholds.json"),
-        Path(__file__).parent / "thresholds.json",
-        Path(__file__).parent.parent / "thresholds.json"
+        base_dir / "thresholds.json",
+        base_dir.parent / "thresholds.json",
+        Path.cwd() / "thresholds.json",
+        Path("/var/task/thresholds.json"),
+        Path("/var/task/api/thresholds.json")
     ]
     for p in candidates:
         if p.exists():
             return p
-    return Path("thresholds.json")
+    return base_dir.parent / "thresholds.json"
 
 def get_registry() -> List[Dict[str, Any]]:
     """Returns the full master registry metadata for all thresholds."""

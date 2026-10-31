@@ -3,9 +3,10 @@ import base64
 import io
 import os
 import sys
+import traceback
 import urllib.request
 import urllib.error
-from typing import Dict, Any, List, Optional, Tuple, Union
+from typing import Dict, Any, List, Optional, Tuple, Union, Callable, Set
 from http.server import BaseHTTPRequestHandler
 import numpy as np
 from PIL import Image, ImageFilter
@@ -87,6 +88,27 @@ class handler(BaseHTTPRequestHandler):
         self.end_headers()
 
     def do_GET(self):
+        try:
+            self._handle_GET()
+        except Exception as e:
+            tb_str = traceback.format_exc()
+            print(f"[ERROR in do_GET] {e}\n{tb_str}", file=sys.stdout)
+            sys.stdout.flush()
+            try:
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json")
+                self._send_cors_headers()
+                self.end_headers()
+                err_payload = {
+                    "error": str(e),
+                    "type": type(e).__name__,
+                    "traceback": tb_str
+                }
+                self.wfile.write(json.dumps(err_payload).encode("utf-8"))
+            except Exception:
+                pass
+
+    def _handle_GET(self):
         matched_path = self.headers.get("x-matched-path") or self.headers.get("x-vercel-matched-path") or self.path
         path = matched_path.split("?")[0]
 
@@ -234,6 +256,27 @@ class handler(BaseHTTPRequestHandler):
             }).encode("utf-8"))
 
     def do_POST(self):
+        try:
+            self._handle_POST()
+        except Exception as e:
+            tb_str = traceback.format_exc()
+            print(f"[ERROR in do_POST] {e}\n{tb_str}", file=sys.stdout)
+            sys.stdout.flush()
+            try:
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json")
+                self._send_cors_headers()
+                self.end_headers()
+                err_payload = {
+                    "error": str(e),
+                    "type": type(e).__name__,
+                    "traceback": tb_str
+                }
+                self.wfile.write(json.dumps(err_payload).encode("utf-8"))
+            except Exception:
+                pass
+
+    def _handle_POST(self):
         matched_path = self.headers.get("x-matched-path") or self.headers.get("x-vercel-matched-path") or self.path
         path = matched_path.split("?")[0]
         content_length = int(self.headers.get("Content-Length", 0))
