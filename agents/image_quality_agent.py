@@ -64,6 +64,7 @@ class QualityMetrics:
             "occlusion_score": self.occlusion_score,
             "overall_quality": self.overall_quality,
             "reasoning": self.reasoning,
+            "reasons": self.reasoning,
             "triggered_criteria": self.triggered_criteria,
             "edge_map_b64": self.edge_map_b64
         }

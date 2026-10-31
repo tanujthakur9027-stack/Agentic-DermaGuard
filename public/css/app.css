@@ -1,0 +1,265 @@
+/* Agentic DermaGuard - Universal Healthcare Design System */
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+:root {
+  --bg-primary: #070b13;
+  --bg-secondary: #0c1222;
+  --bg-card: rgba(15, 23, 42, 0.85);
+  --bg-card-hover: rgba(22, 33, 58, 0.95);
+  --border-color: rgba(255, 255, 255, 0.08);
+  --border-focus: rgba(6, 182, 212, 0.5);
+  --text-main: #f1f5f9;
+  --text-muted: #94a3b8;
+  --text-dim: #64748b;
+  --cyan-primary: #06b6d4;
+  --cyan-glow: rgba(6, 182, 212, 0.25);
+  --accent-blue: #3b82f6;
+  --color-auto: #10b981;
+  --color-refer: #ef4444;
+  --color-reimage: #f59e0b;
+}
+
+[data-theme="light"] {
+  --bg-primary: #f8fafc;
+  --bg-secondary: #ffffff;
+  --bg-card: rgba(255, 255, 255, 0.95);
+  --bg-card-hover: #f1f5f9;
+  --border-color: rgba(0, 0, 0, 0.08);
+  --border-focus: rgba(6, 182, 212, 0.8);
+  --text-main: #0f172a;
+  --text-muted: #475569;
+  --text-dim: #94a3b8;
+}
+
+body {
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  background-color: var(--bg-primary);
+  color: var(--text-main);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.font-mono {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Glass Card Components */
+.glass-card {
+  background: var(--bg-card);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border-color);
+  box-shadow: 0 4px 24px -1px rgba(0, 0, 0, 0.35);
+  border-radius: 1rem;
+}
+
+.glass-card-hover {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.glass-card-hover:hover {
+  border-color: var(--border-focus);
+  box-shadow: 0 8px 32px -2px var(--cyan-glow);
+  transform: translateY(-1px);
+}
+
+/* Decision Badges */
+.badge-auto {
+  background-color: rgba(16, 185, 129, 0.12);
+  color: #34d399;
+  border: 1.5px solid #10b981;
+  box-shadow: 0 0 16px rgba(16, 185, 129, 0.2);
+}
+
+.badge-refer {
+  background-color: rgba(239, 68, 68, 0.12);
+  color: #f87171;
+  border: 1.5px solid #ef4444;
+  box-shadow: 0 0 16px rgba(239, 68, 68, 0.2);
+}
+
+.badge-reimage {
+  background-color: rgba(245, 158, 11, 0.12);
+  color: #fbbf24;
+  border: 1.5px solid #f59e0b;
+  box-shadow: 0 0 16px rgba(245, 158, 11, 0.2);
+}
+
+/* Required UI Example Strip */
+.example-strip-container {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.85rem 1.25rem;
+  background: rgba(12, 18, 34, 0.95);
+  border: 1px solid rgba(6, 182, 212, 0.35);
+  border-radius: 0.85rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.strip-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.65rem;
+  border-radius: 0.5rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.strip-pill-a1 {
+  background: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.4);
+}
+
+.strip-pill-a2 {
+  background: rgba(99, 102, 241, 0.15);
+  color: #818cf8;
+  border: 1px solid rgba(99, 102, 241, 0.4);
+}
+
+.strip-pill-a3a4 {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+}
+
+.strip-pill-a5 {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+}
+
+.strip-pill-a6 {
+  background: rgba(6, 182, 212, 0.18);
+  color: #22d3ee;
+  border: 1px solid rgba(6, 182, 212, 0.5);
+  font-weight: 800;
+}
+
+.strip-quote {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-style: italic;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  margin-left: 0.2rem;
+}
+
+.strip-separator {
+  color: #475569;
+  font-size: 0.8rem;
+}
+
+/* Evidence Audit Table */
+.evidence-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.75rem;
+}
+
+.evidence-table th {
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  color: var(--text-dim);
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.65rem;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid var(--border-color);
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.evidence-table td {
+  padding: 0.55rem 0.75rem;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-muted);
+}
+
+.evidence-table tr:last-child td {
+  border-bottom: none;
+}
+
+.evidence-table tr:hover td {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+/* Custom Scrollbars */
+.custom-scroll::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.custom-scroll::-webkit-scrollbar-track {
+  background: rgba(11, 17, 32, 0.5);
+}
+.custom-scroll::-webkit-scrollbar-thumb {
+  background: #1e293b;
+  border-radius: 4px;
+}
+.custom-scroll::-webkit-scrollbar-thumb:hover {
+  background: #334155;
+}
+
+/* Toast Notifications Container */
+#toast-container {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  pointer-events: none;
+}
+
+.toast {
+  pointer-events: auto;
+  min-width: 280px;
+  max-width: 420px;
+  padding: 0.85rem 1.15rem;
+  border-radius: 0.75rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(12px);
+  animation: slideInToast 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.toast-success {
+  background: rgba(6, 78, 59, 0.95);
+  border: 1px solid #10b981;
+  color: #ecfdf5;
+}
+
+.toast-error {
+  background: rgba(127, 29, 29, 0.95);
+  border: 1px solid #ef4444;
+  color: #fef2f2;
+}
+
+.toast-info {
+  background: rgba(15, 23, 42, 0.95);
+  border: 1px solid var(--cyan-primary);
+  color: #ecfeff;
+}
+
+@keyframes slideInToast {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}

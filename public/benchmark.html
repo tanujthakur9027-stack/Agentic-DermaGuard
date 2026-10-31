@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Validation Benchmark &amp; Multi-Agent Ablation | Agentic DermaGuard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body class="selection:bg-cyan-500 selection:text-white">
+
+  <!-- Enterprise Header -->
+  <header class="border-b border-slate-800/80 bg-[#0c1222]/95 backdrop-blur-md sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center h-16">
+      <div class="flex items-center space-x-3.5">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 via-blue-600 to-indigo-600 flex items-center justify-center text-white text-xl shadow-lg shadow-cyan-500/25 ring-1 ring-cyan-400/30">
+          <i class="fa-solid fa-chart-column"></i>
+        </div>
+        <div>
+          <div class="flex items-center space-x-2">
+            <span class="text-lg font-black tracking-tight bg-gradient-to-r from-white via-slate-100 to-slate-300 bg-clip-text text-transparent">Agentic DermaGuard</span>
+            <span class="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-cyan-950/80 text-cyan-300 border border-cyan-800/60 shadow-sm">Benchmark Dashboard</span>
+          </div>
+          <p class="text-[11px] text-slate-400 font-medium">Jaypee Agentic AI International Summit 2026 — Track 2 | Healthcare</p>
+        </div>
+      </div>
+      
+      <div class="flex items-center space-x-3">
+        <button onclick="toggleTheme()" class="w-9 h-9 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-300 hover:text-white transition">
+          <i id="theme-toggle-icon" class="fa-solid fa-sun text-amber-400"></i>
+        </button>
+        <a href="https://github.com/tanujthakur9027-stack/Agentic-DermaGuard" target="_blank" class="text-xs px-3 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 transition flex items-center gap-1.5 font-mono">
+          <i class="fa-brands fa-github text-sm"></i>
+          <span class="hidden md:inline">GitHub</span>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Multi-Page Navigation Bar -->
+  <nav class="border-b border-slate-800/80 bg-[#0f172a]/70 backdrop-blur-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex space-x-8 overflow-x-auto custom-scroll">
+      <a href="index.html" class="nav-link py-3.5 px-1 border-b-2 font-semibold text-sm border-transparent text-slate-400 hover:text-slate-200 flex items-center space-x-2 transition whitespace-nowrap">
+        <i class="fa-solid fa-wand-magic-sparkles text-xs"></i>
+        <span>Clinical Screening</span>
+      </a>
+      <a href="batch.html" class="nav-link py-3.5 px-1 border-b-2 font-semibold text-sm border-transparent text-slate-400 hover:text-slate-200 flex items-center space-x-2 transition whitespace-nowrap">
+        <i class="fa-solid fa-bolt-lightning text-xs"></i>
+        <span>Batch &amp; 200 Hidden Test</span>
+      </a>
+      <a href="thresholds.html" class="nav-link py-3.5 px-1 border-b-2 font-semibold text-sm border-transparent text-slate-400 hover:text-slate-200 flex items-center space-x-2 transition whitespace-nowrap">
+        <i class="fa-solid fa-sliders text-xs"></i>
+        <span>Threshold Registry &amp; Tuning</span>
+      </a>
+      <a href="benchmark.html" class="nav-link py-3.5 px-1 border-b-2 font-semibold text-sm border-cyan-400 text-cyan-400 flex items-center space-x-2 transition whitespace-nowrap">
+        <i class="fa-solid fa-chart-column text-xs"></i>
+        <span>Benchmark &amp; Validation (1,942 Cases)</span>
+      </a>
+    </div>
+  </nav>
+
+  <!-- Main Workspace -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full space-y-6">
+
+    <!-- Header Actions Toolbar -->
+    <section class="glass-card p-5 border-l-4 border-l-cyan-400 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div>
+        <h2 class="text-base font-bold text-white flex items-center gap-2">
+          <i class="fa-solid fa-award text-cyan-400"></i> Full Validation Benchmark &amp; Multi-Agent Ablation
+        </h2>
+        <p class="text-xs text-slate-400 mt-1 max-w-3xl leading-relaxed">
+          Comprehensive benchmark across 1,942 dermoscopic evaluation cases on HAM10000. 
+          Audited for autonomous triage safety, missed malignancy prevention, and class-wise Macro-F1.
+        </p>
+      </div>
+
+      <div class="flex items-center gap-2.5">
+        <a href="/api/download" download="final_submission_format_sample.csv" class="px-3.5 py-2 rounded-xl bg-cyan-950 hover:bg-cyan-900 text-cyan-300 border border-cyan-800 text-xs font-bold transition flex items-center gap-2 font-mono">
+          <i class="fa-solid fa-download"></i>
+          <span>Sample Submission CSV</span>
+        </a>
+      </div>
+    </section>
+
+    <!-- TOP KPI SCORECARDS -->
+    <section class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5">
+      
+      <div class="glass-card p-3.5 border-t-2 border-t-cyan-400">
+        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono">Overall Accuracy</span>
+        <div class="flex items-baseline gap-1.5 mt-1">
+          <span id="bm-accuracy" class="text-2xl font-black text-cyan-400 font-mono">75.2%</span>
+          <span class="text-[10px] text-slate-500 font-mono">1,460/1,942</span>
+        </div>
+      </div>
+
+      <div class="glass-card p-3.5 border-t-2 border-t-purple-400">
+        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono">Macro-F1 (7 Codes)</span>
+        <div class="flex items-baseline gap-1.5 mt-1">
+          <span id="bm-macro-f1" class="text-2xl font-black text-purple-400 font-mono">0.5980</span>
+          <span class="text-[10px] text-purple-500 font-bold">+10.2% vs Base</span>
+        </div>
+      </div>
+
+      <div class="glass-card p-3.5 border-t-2 border-t-emerald-400">
+        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono">Correct AUTO_TRIAGE</span>
+        <div class="flex items-baseline gap-1.5 mt-1">
+          <span id="bm-correct-auto" class="text-2xl font-black text-emerald-400 font-mono">130</span>
+          <span class="text-[10px] text-emerald-500 font-bold">97.0% Prec.</span>
+        </div>
+      </div>
+
+      <div class="glass-card p-3.5 border-t-2 border-t-rose-500">
+        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono">Incorrect AUTO_TRIAGE</span>
+        <div class="flex items-baseline gap-1.5 mt-1">
+          <span id="bm-incorrect-auto" class="text-2xl font-black text-rose-400 font-mono">4</span>
+          <span class="text-[10px] text-rose-500 font-bold">Zero Missed Mel</span>
+        </div>
+      </div>
+
+      <div class="glass-card p-3.5 border-t-2 border-t-amber-400">
+        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono">Specialist REFERs</span>
+        <div class="flex items-baseline gap-1.5 mt-1">
+          <span id="bm-refers" class="text-2xl font-black text-amber-400 font-mono">1,696</span>
+          <span class="text-[10px] text-slate-500">Safety Escalated</span>
+        </div>
+      </div>
+
+      <div class="glass-card p-3.5 border-t-2 border-t-orange-400">
+        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono">Quality RE_IMAGEs</span>
+        <div class="flex items-baseline gap-1.5 mt-1">
+          <span id="bm-reimages" class="text-2xl font-black text-orange-400 font-mono">112</span>
+          <span class="text-[10px] text-slate-500">Gatekeeper</span>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- CONFUSION MATRIX & CLASS PERFORMANCE ROW -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      
+      <!-- 7x7 Interactive Confusion Matrix -->
+      <div class="lg:col-span-7 glass-card p-5 space-y-3">
+        <div class="flex justify-between items-center">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
+            <i class="fa-solid fa-table-cells text-cyan-400"></i> Multi-Class Confusion Matrix (7 Diseases)
+          </h3>
+          <span class="text-[10px] text-slate-500 font-mono">Green = Correct | Red = Misclassification</span>
+        </div>
+        <div id="matrix-container" class="mt-2"></div>
+      </div>
+
+      <!-- Class-Wise Performance Metrics -->
+      <div class="lg:col-span-5 glass-card p-5 space-y-3 flex flex-col justify-between">
+        <div>
+          <div class="flex justify-between items-center mb-2">
+            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
+              <i class="fa-solid fa-chart-pie text-cyan-400"></i> Per-Class Precision, Recall &amp; F1
+            </h3>
+            <span class="text-[10px] text-slate-500 font-mono">HAM10000 Val</span>
+          </div>
+
+          <div class="overflow-x-auto custom-scroll border border-slate-800/80 rounded-xl">
+            <table class="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr class="bg-slate-950/70 border-b border-slate-800 text-[10px] text-slate-400 uppercase font-mono">
+                  <th class="p-2">Code</th>
+                  <th class="p-2">Disease</th>
+                  <th class="p-2 text-right">Prec.</th>
+                  <th class="p-2 text-right">Recall</th>
+                  <th class="p-2 text-right">F1</th>
+                </tr>
+              </thead>
+              <tbody id="class-metrics-body" class="divide-y divide-slate-800/60 font-mono text-[11px]">
+                <!-- Populated dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="p-3 bg-slate-950/80 rounded-xl border border-slate-800 text-[11px] text-slate-400 space-y-1">
+          <p><strong class="text-cyan-300">Class Probability Bias Tuning:</strong> Coordinate ascent logit biases significantly improve minority class detection (DF recall: 60.9%, Vascular recall: 88.9%, Melanoma recall: 61.7%).</p>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- MULTI-AGENT ABLATION STUDY -->
+    <section class="glass-card p-5 space-y-4">
+      <div>
+        <h3 class="text-sm font-bold text-white flex items-center gap-2">
+          <i class="fa-solid fa-stairs text-cyan-400"></i> Multi-Agent Ablation Study (Incremental Role Contribution)
+        </h3>
+        <p class="text-xs text-slate-400 mt-1">
+          Demonstrates how each specialized agent progressively strengthens clinical safety and filters unsafe autonomous triage.
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-5 gap-3.5 font-mono text-xs">
+        
+        <div class="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
+          <div class="flex justify-between items-center text-[10px] text-slate-500">
+            <span>Stage 1</span>
+            <span class="text-slate-400">Baseline</span>
+          </div>
+          <h4 class="font-bold text-white text-xs font-sans">A1 + A2 Only</h4>
+          <div class="space-y-1 text-[11px]">
+            <div class="flex justify-between text-slate-400"><span>AUTO_TRIAGE:</span> <strong class="text-white">729</strong></div>
+            <div class="flex justify-between text-slate-400"><span>Incorrect Auto:</span> <strong class="text-rose-400">16</strong></div>
+            <div class="flex justify-between text-slate-400"><span>Missed Malignancies:</span> <strong class="text-rose-400">8 (Dangerous)</strong></div>
+          </div>
+        </div>
+
+        <div class="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
+          <div class="flex justify-between items-center text-[10px] text-slate-500">
+            <span>Stage 2</span>
+            <span class="text-cyan-400">+ABCD</span>
+          </div>
+          <h4 class="font-bold text-white text-xs font-sans">+ A3 Lesion Analysis</h4>
+          <div class="space-y-1 text-[11px]">
+            <div class="flex justify-between text-slate-400"><span>AUTO_TRIAGE:</span> <strong class="text-white">312</strong></div>
+            <div class="flex justify-between text-slate-400"><span>Incorrect Auto:</span> <strong class="text-amber-400">4</strong></div>
+            <div class="flex justify-between text-slate-400"><span>Missed Malignancies:</span> <strong class="text-amber-400">2</strong></div>
+          </div>
+        </div>
+
+        <div class="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
+          <div class="flex justify-between items-center text-[10px] text-slate-500">
+            <span>Stage 3</span>
+            <span class="text-indigo-400">+Demographics</span>
+          </div>
+          <h4 class="font-bold text-white text-xs font-sans">+ A4 Context Agent</h4>
+          <div class="space-y-1 text-[11px]">
+            <div class="flex justify-between text-slate-400"><span>AUTO_TRIAGE:</span> <strong class="text-white">312</strong></div>
+            <div class="flex justify-between text-slate-400"><span>Incorrect Auto:</span> <strong class="text-amber-400">4</strong></div>
+            <div class="flex justify-between text-slate-400"><span>Missed Malignancies:</span> <strong class="text-amber-400">2</strong></div>
+          </div>
+        </div>
+
+        <div class="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
+          <div class="flex justify-between items-center text-[10px] text-slate-500">
+            <span>Stage 4</span>
+            <span class="text-rose-400">+Safety Veto</span>
+          </div>
+          <h4 class="font-bold text-white text-xs font-sans">+ A5 Safety Sentinel</h4>
+          <div class="space-y-1 text-[11px]">
+            <div class="flex justify-between text-slate-400"><span>AUTO_TRIAGE:</span> <strong class="text-emerald-400">134</strong></div>
+            <div class="flex justify-between text-slate-400"><span>Incorrect Auto:</span> <strong class="text-emerald-400">4 (97.0% Prec.)</strong></div>
+            <div class="flex justify-between text-slate-400"><span>Safety Vetoes:</span> <strong class="text-cyan-400">595 Overrides</strong></div>
+          </div>
+        </div>
+
+        <div class="p-3.5 rounded-xl bg-cyan-950/40 border border-cyan-800 space-y-2">
+          <div class="flex justify-between items-center text-[10px] text-cyan-400">
+            <span>Stage 5</span>
+            <span class="font-bold">Full Consensus</span>
+          </div>
+          <h4 class="font-bold text-cyan-200 text-xs font-sans">+ A6 Master Policy</h4>
+          <div class="space-y-1 text-[11px]">
+            <div class="flex justify-between text-slate-300"><span>Safe Auto-Triage:</span> <strong class="text-emerald-400">130 Clear</strong></div>
+            <div class="flex justify-between text-slate-300"><span>Specialist Referrals:</span> <strong class="text-amber-300">1,696</strong></div>
+            <div class="flex justify-between text-slate-300"><span>Quality Re-Images:</span> <strong class="text-orange-300">112</strong></div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-slate-800/80 bg-[#090e1a] py-4 text-center text-xs text-slate-500">
+    <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row justify-between items-center gap-2">
+      <span class="font-mono text-[11px]">Jaypee Agentic AI International Summit 2026 — Track 2 | Healthcare</span>
+      <span class="text-slate-400">Agentic DermaGuard (Validation Benchmark Report)</span>
+    </div>
+  </footer>
+
+  <script src="js/app.js"></script>
+  <script src="js/charts.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      await loadBenchmarkData();
+    });
+
+    async function loadBenchmarkData() {
+      try {
+        const data = await apiRequest('/api/benchmark');
+        renderBenchmarkMetrics(data);
+      } catch (err) {
+        showToast(`Could not load benchmark metrics: ${err.message}`, 'error');
+        console.error(err);
+      }
+    }
+
+    function renderBenchmarkMetrics(data) {
+      if (!data || !data.classification_metrics) return;
+
+      const cm = data.classification_metrics;
+      const counts = data.live_demo_reporting_counts || {};
+
+      document.getElementById('bm-accuracy').textContent = `${(cm.overall_accuracy * 100).toFixed(1)}%`;
+      document.getElementById('bm-macro-f1').textContent = cm.macro_f1_score.toFixed(4);
+      document.getElementById('bm-correct-auto').textContent = counts.correct_auto_triage || 130;
+      document.getElementById('bm-incorrect-auto').textContent = counts.incorrect_auto_triage || 4;
+      document.getElementById('bm-refers').textContent = (counts.number_of_refers || 1696).toLocaleString();
+      document.getElementById('bm-reimages').textContent = counts.number_of_re_image || 112;
+
+      // Render Confusion Matrix
+      if (cm.confusion_matrix) {
+        renderConfusionMatrixTable('matrix-container', cm.confusion_matrix, ['mel', 'nv', 'bcc', 'akiec', 'bkl', 'df', 'vasc']);
+      }
+
+      // Render Per-Class Table
+      if (cm.class_metrics) {
+        const tbody = document.getElementById('class-metrics-body');
+        let html = '';
+        Object.entries(cm.class_metrics).forEach(([disease, m]) => {
+          html += `
+            <tr class="hover:bg-slate-900/60 transition">
+              <td class="p-2 font-bold text-cyan-400">${m.code}</td>
+              <td class="p-2 text-slate-300 font-sans font-medium">${disease}</td>
+              <td class="p-2 text-right text-slate-300">${(m.precision * 100).toFixed(1)}%</td>
+              <td class="p-2 text-right text-slate-300">${(m.recall * 100).toFixed(1)}%</td>
+              <td class="p-2 text-right font-bold text-purple-300">${m.f1_score.toFixed(3)}</td>
+            </tr>
+          `;
+        });
+        tbody.innerHTML = html;
+      }
+    }
+  </script>
+</body>
+</html>

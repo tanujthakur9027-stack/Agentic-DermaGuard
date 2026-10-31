@@ -143,6 +143,14 @@ class AgenticDermaGuard:
                     "A5_safety": a5_data,
                     "A6_coordinator": a6_data
                 },
+                "explaining_agents": [
+                    a1_data,
+                    diag_output,
+                    a3_data,
+                    a4_data,
+                    a5_data,
+                    a6_data
+                ],
                 # Backward-compatible mappings
                 "primary_agent": a6_data["agent_name"],
                 "predicted_class": a6_data["prediction_name"],
@@ -182,6 +190,14 @@ class AgenticDermaGuard:
                     "A5_safety": {"agent": "A5", "name": "Safety Sentinel", "status": "SAFETY_VETO", "score": 1.0, "summary": "Safety veto triggered by error", "evidence": [], "flags": ["SAFETY_VETO", "SYSTEM_ERROR"], "explanation": err_msg, "runtime_ms": 0.0},
                     "A6_coordinator": {"agent": "A6", "name": "Coordinator", "status": "REFER", "score": 0.50, "summary": "Conservative fallback referral", "evidence": [], "flags": ["FALLBACK_REFERRAL"], "explanation": err_msg, "runtime_ms": 0.0}
                 },
+                "explaining_agents": [
+                    {"agent": "A1", "name": "Image Quality", "status": "ERROR", "score": 0.0, "summary": "Error in image quality assessment", "evidence": [], "flags": ["SYSTEM_ERROR"], "explanation": err_msg, "runtime_ms": 0.0},
+                    {"agent": "A2", "name": "Diagnosis", "status": fallback_pred, "score": 0.50, "summary": f"Fallback to {fallback_pred}", "evidence": [], "flags": ["FALLBACK"], "explanation": err_msg, "runtime_ms": 0.0},
+                    {"agent": "A3", "name": "Lesion Analysis", "status": "INDETERMINATE", "score": 0.50, "summary": "Analysis skipped due to error", "evidence": [], "flags": ["SYSTEM_ERROR"], "explanation": err_msg, "runtime_ms": 0.0},
+                    {"agent": "A4", "name": "Context & Demographics", "status": "MODERATE", "score": 0.50, "summary": "Demographic baseline", "evidence": [], "flags": ["SYSTEM_ERROR"], "explanation": err_msg, "runtime_ms": 0.0},
+                    {"agent": "A5", "name": "Safety Sentinel", "status": "SAFETY_VETO", "score": 1.0, "summary": "Safety veto triggered by error", "evidence": [], "flags": ["SAFETY_VETO", "SYSTEM_ERROR"], "explanation": err_msg, "runtime_ms": 0.0},
+                    {"agent": "A6", "name": "Coordinator", "status": "REFER", "score": 0.50, "summary": "Conservative fallback referral", "evidence": [], "flags": ["FALLBACK_REFERRAL"], "explanation": err_msg, "runtime_ms": 0.0}
+                ],
                 "primary_agent": "Coordinator Agent",
                 "predicted_class": "Melanocytic nevus" if fallback_pred == "nv" else fallback_pred,
                 "explanation": f"Conservative fallback referral applied due to processing error: {err_msg}",

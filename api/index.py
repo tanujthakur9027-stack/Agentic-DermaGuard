@@ -7,31 +7,42 @@ import urllib.request
 import urllib.error
 from http.server import BaseHTTPRequestHandler
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageFilter
 
-# Add workspace root to sys.path so agents/ and orchestrator can be imported on Vercel
 WORKSPACE_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if WORKSPACE_ROOT not in sys.path:
     sys.path.insert(0, WORKSPACE_ROOT)
 
 BENCHMARK_FILE = os.path.join(WORKSPACE_ROOT, "outputs", "validation_results.json")
+SAMPLE_CSV_FILE = os.path.join(WORKSPACE_ROOT, "outputs", "final_submission_format_sample.csv")
+PUBLIC_DIR = os.path.join(WORKSPACE_ROOT, "public")
 
-# Import the 6-agent orchestrator
+# Import centralized thresholds
 try:
-    from orchestrator import agentic_dermaguard, AgenticDermaGuard
-    HAVE_ORCHESTRATOR = True
-except Exception as e:
-    print(f"[Warning] Failed to import orchestrator: {e}")
-    agentic_dermaguard = None
-    HAVE_ORCHESTRATOR = False
+    from backend.thresholds import (
+        REGISTRY,
+        PRESETS,
+        get_registry,
+        get_presets,
+        load_thresholds,
+        save_thresholds,
+        reset_thresholds,
+        get_flat_thresholds
+    )
+except ImportError:
+    from thresholds import (
+        REGISTRY,
+        PRESETS,
+        get_registry,
+        get_presets,
+        load_thresholds,
+        save_thresholds,
+        reset_thresholds,
+        get_flat_thresholds
+    )
 
-# Fallback implementations in case orchestrator module is isolated on Vercel serverless
-from agents.image_quality_agent import quality_agent
-from agents.diagnosis_agent import diagnosis_agent
-from agents.lesion_analysis_agent import lesion_analysis_agent
-from agents.context_agent import context_agent
-from agents.safety_agent import safety_agent
-from agents.coordinator_agent import coordinator_agent
+# Import orchestrator
+from orchestrator import agentic_dermaguard, AgenticDermaGuard
 
 class handler(BaseHTTPRequestHandler):
     def _send_cors_headers(self):
@@ -47,16 +58,54 @@ class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         matched_path = self.headers.get("x-matched-path") or self.headers.get("x-vercel-matched-path") or self.path
         path = matched_path.split("?")[0]
-        
+
+        # Static assets and HTML pages (for local standalone execution)
+        if not path.startswith("/api"):
+            rel = "index.html" if path in ("", "/") else path.lstrip("/")
+            file_path = os.path.normpath(os.path.join(PUBLIC_DIR, rel))
+            if os.path.commonpath([PUBLIC_DIR, file_path]) == PUBLIC_DIR and os.path.isfile(file_path):
+                mime = "text/plain"
+                if file_path.endswith(".html"):
+                    mime = "text/html; charset=utf-8"
+                elif file_path.endswith(".css"):
+                    mime = "text/css; charset=utf-8"
+                elif file_path.endswith(".js"):
+                    mime = "application/javascript; charset=utf-8"
+                elif file_path.endswith(".json"):
+                    mime = "application/json"
+                elif file_path.endswith(".png"):
+                    mime = "image/png"
+                elif file_path.endswith((".jpg", ".jpeg")):
+                    mime = "image/jpeg"
+                elif file_path.endswith(".svg"):
+                    mime = "image/svg+xml"
+                elif file_path.endswith(".ico"):
+                    mime = "image/x-icon"
+
+                self.send_response(200)
+                self.send_header("Content-Type", mime)
+                self._send_cors_headers()
+                self.end_headers()
+                with open(file_path, "rb") as f:
+                    self.wfile.write(f.read())
+                return
+            elif path not in ("", "/"):
+                self.send_response(404)
+                self.send_header("Content-Type", "application/json")
+                self._send_cors_headers()
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": f"File not found: {path}"}).encode("utf-8"))
+                return
+
+        # 1. Download sample submission CSV
         if "download" in path or path.endswith("submission-sample"):
-            sample_csv_path = os.path.join(WORKSPACE_ROOT, "outputs", "final_submission_format_sample.csv")
-            if os.path.exists(sample_csv_path):
+            if os.path.exists(SAMPLE_CSV_FILE):
                 self.send_response(200)
                 self.send_header("Content-Type", "text/csv")
                 self.send_header("Content-Disposition", 'attachment; filename="final_submission_format_sample.csv"')
                 self._send_cors_headers()
                 self.end_headers()
-                with open(sample_csv_path, "rb") as f:
+                with open(SAMPLE_CSV_FILE, "rb") as f:
                     self.wfile.write(f.read())
             else:
                 self.send_response(404)
@@ -64,10 +113,12 @@ class handler(BaseHTTPRequestHandler):
                 self._send_cors_headers()
                 self.end_headers()
                 self.wfile.write(json.dumps({"error": "Submission sample CSV not found"}).encode("utf-8"))
+
+        # 2. Validation Benchmark Metrics
         elif "benchmark" in path:
             try:
                 if os.path.exists(BENCHMARK_FILE):
-                    with open(BENCHMARK_FILE, "r") as f:
+                    with open(BENCHMARK_FILE, "r", encoding="utf-8") as f:
                         data = json.load(f)
                 else:
                     data = {"error": "Benchmark file not found"}
@@ -82,6 +133,47 @@ class handler(BaseHTTPRequestHandler):
                 self._send_cors_headers()
                 self.end_headers()
                 self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+
+        # 3. Threshold Registry & Presets
+        elif "thresholds" in path:
+            try:
+                current_values = load_thresholds(reload=True)
+                registry = get_registry()
+                presets = get_presets()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self._send_cors_headers()
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    "status": "success",
+                    "registry": registry,
+                    "current": current_values,
+                    "presets": presets
+                }).encode("utf-8"))
+            except Exception as e:
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json")
+                self._send_cors_headers()
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+
+        # 4. Curated Demo Samples
+        elif "samples" in path:
+            try:
+                samples = self._get_curated_samples()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self._send_cors_headers()
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "success", "samples": samples}).encode("utf-8"))
+            except Exception as e:
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json")
+                self._send_cors_headers()
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+
+        # Default info
         else:
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
@@ -89,13 +181,23 @@ class handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(json.dumps({
                 "status": "Agentic DermaGuard Six-Agent API is running",
-                "version": "Level 2 / Day 2 Architecture",
+                "version": "Summit 2026 Level 2 Architecture",
+                "endpoints": [
+                    "POST /api/analyze",
+                    "POST /api/triage",
+                    "GET /api/thresholds",
+                    "POST /api/thresholds",
+                    "POST /api/thresholds/reset",
+                    "GET /api/benchmark",
+                    "GET /api/samples",
+                    "POST /api/submit"
+                ],
                 "agents": [
                     "A1: Image Quality Agent",
                     "A2: Diagnosis Agent",
                     "A3: Lesion Analysis Agent",
                     "A4: Reasoning / Context Agent",
-                    "A5: Safety Agent",
+                    "A5: Safety Sentinel Agent",
                     "A6: Coordinator Agent"
                 ]
             }).encode("utf-8"))
@@ -105,162 +207,316 @@ class handler(BaseHTTPRequestHandler):
         path = matched_path.split("?")[0]
         content_length = int(self.headers.get("Content-Length", 0))
         post_data = self.rfile.read(content_length)
-        
+
         try:
             body = json.loads(post_data.decode("utf-8"))
-        except:
+        except Exception:
             body = {}
 
-        if ("submit" in path or "api_url" in body) and not body.get("image_base64"):
-            api_url = body.get("api_url")
-            team_name = body.get("team_name", "Team-DermaGuard")
-            team_token = body.get("team_token", "")
-            
-            if not api_url:
-                self.send_response(400)
-                self.send_header("Content-Type", "application/json")
-                self._send_cors_headers()
-                self.end_headers()
-                self.wfile.write(json.dumps({"error": "Missing api_url"}).encode("utf-8"))
-                return
-
-            if os.path.exists(BENCHMARK_FILE):
-                with open(BENCHMARK_FILE, "r") as f:
-                    sum_data = json.load(f)
-            else:
-                sum_data = {}
-
-            payload = {
-                "team_name": team_name,
-                "track": "Track 2 | Healthcare",
-                "level": 2,
-                "project": "Agentic DermaGuard (Six-Agent System)",
-                "timestamp": sum_data.get("evaluation_timestamp"),
-                "total_validation_images": sum_data.get("total_eval_samples", 1942),
-                "baseline_metrics": sum_data.get("baseline_classification_metrics", {}),
-                "image_quality_summary": sum_data.get("image_quality_agent_outcomes", {}),
-                "triage_summary": sum_data.get("multi_agent_triage_decisions", {}),
-                "model_architecture": "Six-Agent Consensus: Image Quality + EfficientNet-B0 + ABCD Lesion + Context Reasoning + Safety Sentinel + Coordinator Policy"
-            }
-            
+        # 1. Reset Thresholds Endpoint
+        if path.endswith("/reset") or "reset" in path:
             try:
-                req = urllib.request.Request(
-                    api_url,
-                    data=json.dumps(payload).encode("utf-8"),
-                    headers={
-                        "Content-Type": "application/json",
-                        "User-Agent": "AgenticDermaGuard-VercelClient/2.0",
-                        **({"Authorization": f"Bearer {team_token}", "X-API-KEY": team_token} if team_token else {})
-                    },
-                    method="POST"
-                )
-                with urllib.request.urlopen(req, timeout=20) as r:
-                    code = r.getcode()
-                    res_body = r.read().decode("utf-8")
-                    self.send_response(200)
-                    self.send_header("Content-Type", "application/json")
-                    self._send_cors_headers()
-                    self.end_headers()
-                    self.wfile.write(json.dumps({"status": "success", "code": code, "response": res_body}).encode("utf-8"))
-            except Exception as ex:
-                self.send_response(500)
-                self.send_header("Content-Type", "application/json")
-                self._send_cors_headers()
-                self.end_headers()
-                self.wfile.write(json.dumps({"status": "error", "message": str(ex)}).encode("utf-8"))
-        else:
-            # Default to Six-Agent Triage Pipeline for all other POST calls
-            image_b64 = body.get("image_base64", "")
-            thresholds = body.get("thresholds", {})
-            patient_context = body.get("context", {})
-
-            try:
-                # Decode image
-                if image_b64:
-                    if "," in image_b64:
-                        image_b64 = image_b64.split(",")[1]
-                    img_bytes = base64.b64decode(image_b64)
-                    pil_img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
-                else:
-                    # Default placeholder dermoscopic image
-                    pil_img = Image.new("RGB", (224, 224), color=(180, 140, 120))
-
-                # Execute Six-Agent Pipeline
-                if HAVE_ORCHESTRATOR and agentic_dermaguard is not None:
-                    res = agentic_dermaguard.process_image(
-                        pil_img,
-                        patient_context=patient_context,
-                        custom_thresholds=thresholds
-                    )
-                else:
-                    # Direct multi-agent invocation fallback
-                    q_res = quality_agent.evaluate(pil_img, custom_thresholds=thresholds)
-                    a1_data = {
-                        "blur_score": q_res.blur_score,
-                        "lighting_score": q_res.lighting_score,
-                        "glare_score": q_res.glare_score,
-                        "occlusion_score": q_res.occlusion_score,
-                        "overall_quality": q_res.overall_quality,
-                        "status": q_res.status,
-                        "reasoning": q_res.reasoning,
-                        "triggered_criteria": q_res.triggered_criteria,
-                        "edge_map_b64": q_res.edge_map_b64
-                    }
-                    diag_output = diagnosis_agent.predict(pil_img, custom_thresholds=thresholds)
-                    a3_data = lesion_analysis_agent.analyze(pil_img, custom_thresholds=thresholds)
-                    a4_data = context_agent.evaluate(
-                        age=patient_context.get("age"),
-                        sex=patient_context.get("sex"),
-                        localization=patient_context.get("localization"),
-                        custom_thresholds=thresholds
-                    )
-                    a5_data = safety_agent.review(
-                        quality_data=a1_data,
-                        diagnosis_data=diag_output,
-                        lesion_data=a3_data,
-                        context_data=a4_data,
-                        custom_thresholds=thresholds
-                    )
-                    a6_data = coordinator_agent.coordinate(
-                        a1_quality=a1_data,
-                        a2_diagnosis=diag_output,
-                        a3_lesion=a3_data,
-                        a4_context=a4_data,
-                        a5_safety=a5_data,
-                        custom_auto_conf=thresholds.get("auto_triage_confidence"),
-                        custom_thresholds=thresholds
-                    )
-                    res = {
-                        "final_decision": a6_data["decision"],
-                        "prediction": a6_data["prediction"],
-                        "prediction_name": a6_data["prediction_name"],
-                        "confidence": a6_data["confidence"],
-                        "traceable_chain": a6_data["traceable_chain"],
-                        "traceable_rationale": a6_data["rationale"],
-                        "policy_rule": a6_data["policy_rule"],
-                        "agents": {
-                            "A1_quality": a1_data,
-                            "A2_diagnosis": diag_output,
-                            "A3_lesion_analysis": a3_data,
-                            "A4_context_reasoning": a4_data,
-                            "A5_safety": a5_data,
-                            "A6_coordinator": a6_data
-                        },
-                        "primary_agent": "Coordinator Agent",
-                        "predicted_class": a6_data["prediction_name"],
-                        "explanation": a6_data["rationale"],
-                        "quality_summary": a1_data,
-                        "diagnosis_summary": diag_output
-                    }
-
+                preset = body.get("preset", "Balanced")
+                updated = reset_thresholds(preset)
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json")
                 self._send_cors_headers()
                 self.end_headers()
-                self.wfile.write(json.dumps(res).encode("utf-8"))
+                self.wfile.write(json.dumps({
+                    "status": "success",
+                    "message": f"Reset thresholds to {preset} preset",
+                    "preset": preset,
+                    "thresholds": updated
+                }).encode("utf-8"))
             except Exception as e:
                 self.send_response(500)
                 self.send_header("Content-Type", "application/json")
                 self._send_cors_headers()
                 self.end_headers()
                 self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+            return
+
+        # 2. Save Thresholds Endpoint
+        if path.endswith("/thresholds") or path == "/api/thresholds":
+            try:
+                new_th = body.get("thresholds", body)
+                updated = save_thresholds(new_th)
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self._send_cors_headers()
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    "status": "success",
+                    "message": "Saved thresholds successfully",
+                    "thresholds": updated
+                }).encode("utf-8"))
+            except Exception as e:
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json")
+                self._send_cors_headers()
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+            return
+
+        # 3. Summit Submission Upload Endpoint
+        if "submit" in path and not body.get("image_base64"):
+            self._handle_summit_submission(body)
+            return
+
+        # 4. Primary Image Analysis Pipeline (/api/analyze or /api/triage)
+        self._handle_image_analysis(body)
+
+    def _handle_image_analysis(self, body: Dict[str, Any]):
+        """Processes a single image via the six-agent orchestrator with full error containment."""
+        image_b64 = body.get("image_base64") or body.get("image") or body.get("data") or body.get("image_b64") or ""
+        image_id = body.get("image_id", "")
+        thresholds = body.get("thresholds", {})
+        patient_context = body.get("context", {})
+
+        try:
+            pil_img = None
+            img_desc = "unknown"
+
+            # 1. Resolve image from base64
+            if image_b64:
+                if "," in image_b64:
+                    image_b64 = image_b64.split(",")[1]
+                img_bytes = base64.b64decode(image_b64)
+                pil_img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
+                img_desc = image_id or "uploaded_image.jpg"
+
+            # 2. Or resolve from local path / image_id
+            elif image_id:
+                candidates = [
+                    os.path.join(WORKSPACE_ROOT, "Health", "eval", "images", f"{image_id}.jpg"),
+                    os.path.join(WORKSPACE_ROOT, "Health", "eval", "images", image_id),
+                    os.path.join(WORKSPACE_ROOT, "Health", "training", "images", f"{image_id}.jpg"),
+                    os.path.join(WORKSPACE_ROOT, "Health", "training", "images", image_id),
+                    image_id
+                ]
+                for c in candidates:
+                    if os.path.exists(c):
+                        pil_img = Image.open(c).convert("RGB")
+                        img_desc = os.path.basename(c)
+                        break
+
+            # 3. Synthetic or default fallback
+            if pil_img is None:
+                # Default benign appearance
+                pil_img = Image.new("RGB", (224, 224), color=(180, 140, 120))
+                img_desc = image_id or "default_placeholder.jpg"
+
+            # Execute full Six-Agent Orchestrator
+            res = agentic_dermaguard.process_image(
+                pil_img,
+                patient_context=patient_context,
+                custom_thresholds=thresholds
+            )
+            res["image_id"] = img_desc.replace(".jpg", "")
+
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self._send_cors_headers()
+            self.end_headers()
+            self.wfile.write(json.dumps(res).encode("utf-8"))
+
+        except Exception as e:
+            # Deterministic fallback row per hackathon rules
+            fallback_res = {
+                "image_id": image_id or "unknown",
+                "final_decision": "REFER",
+                "decision": "REFER",
+                "prediction": "nv",
+                "prediction_name": "Melanocytic nevus",
+                "confidence": 0.50,
+                "traceable_chain": "A1: ERROR | A2: nv • 0.50 | A3+A4: UNKNOWN | A5: SAFETY VETO | A6: REFER",
+                "example_strip": 'A1 ERROR "Processing failed" | A2 nv • 0.50 "Model predicts nevus" | A3+A4 UNKNOWN "Analysis error" | A5 SAFETY VETO "Exception catch" | A6 REFER "Final disposition"',
+                "traceable_rationale": f"System error caught during execution ({str(e)}). Conservative clinical referral applied.",
+                "policy_rule": "Fallback Rule: Error mandates specialist referral.",
+                "error": str(e),
+                "agents": {
+                    "A1_quality": {"agent": "A1", "name": "Image Quality", "status": "ERROR", "score": 0.0, "summary": "Quality error", "evidence": [], "flags": ["ERROR"], "explanation": str(e), "runtime_ms": 0.0},
+                    "A2_diagnosis": {"agent": "A2", "name": "Diagnosis", "status": "nv", "score": 0.50, "summary": "Fallback to nv", "evidence": [], "flags": ["FALLBACK"], "explanation": str(e), "runtime_ms": 0.0},
+                    "A3_lesion_analysis": {"agent": "A3", "name": "Lesion Analysis", "status": "INDETERMINATE", "score": 0.50, "summary": "Error in lesion analysis", "evidence": [], "flags": ["ERROR"], "explanation": str(e), "runtime_ms": 0.0},
+                    "A4_context_reasoning": {"agent": "A4", "name": "Context & Demographics", "status": "MODERATE", "score": 0.50, "summary": "Error in context evaluation", "evidence": [], "flags": ["ERROR"], "explanation": str(e), "runtime_ms": 0.0},
+                    "A5_safety": {"agent": "A5", "name": "Safety Sentinel", "status": "SAFETY_VETO", "score": 1.0, "summary": "Veto on error", "evidence": [], "flags": ["SAFETY_VETO"], "explanation": str(e), "runtime_ms": 0.0},
+                    "A6_coordinator": {"agent": "A6", "name": "Coordinator", "status": "REFER", "score": 0.50, "summary": "Conservative fallback", "evidence": [], "flags": ["FALLBACK_REFERRAL"], "explanation": str(e), "runtime_ms": 0.0}
+                }
+            }
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self._send_cors_headers()
+            self.end_headers()
+            self.wfile.write(json.dumps(fallback_res).encode("utf-8"))
+
+    def _handle_summit_submission(self, body: Dict[str, Any]):
+        api_url = body.get("api_url")
+        team_name = body.get("team_name", "Team-DermaGuard")
+        team_token = body.get("team_token", "")
+
+        if not api_url:
+            self.send_response(400)
+            self.send_header("Content-Type", "application/json")
+            self._send_cors_headers()
+            self.end_headers()
+            self.wfile.write(json.dumps({"error": "Missing api_url"}).encode("utf-8"))
+            return
+
+        if os.path.exists(BENCHMARK_FILE):
+            with open(BENCHMARK_FILE, "r", encoding="utf-8") as f:
+                sum_data = json.load(f)
+        else:
+            sum_data = {}
+
+        payload = {
+            "team_name": team_name,
+            "track": "Track 2 | Healthcare",
+            "level": 2,
+            "project": "Agentic DermaGuard (Six-Agent System)",
+            "timestamp": sum_data.get("evaluation_timestamp"),
+            "total_validation_images": sum_data.get("total_eval_samples", 1942),
+            "baseline_metrics": sum_data.get("baseline_classification_metrics", {}),
+            "image_quality_summary": sum_data.get("image_quality_agent_outcomes", {}),
+            "triage_summary": sum_data.get("multi_agent_triage_decisions", {}),
+            "model_architecture": "Six-Agent Consensus: Image Quality + EfficientNet-B0 + ABCD Lesion + Context Reasoning + Safety Sentinel + Coordinator Policy"
+        }
+
+        try:
+            req = urllib.request.Request(
+                api_url,
+                data=json.dumps(payload).encode("utf-8"),
+                headers={
+                    "Content-Type": "application/json",
+                    "User-Agent": "AgenticDermaGuard-Client/2.0",
+                    **({"Authorization": f"Bearer {team_token}", "X-API-KEY": team_token} if team_token else {})
+                },
+                method="POST"
+            )
+            with urllib.request.urlopen(req, timeout=20) as r:
+                code = r.getcode()
+                res_body = r.read().decode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self._send_cors_headers()
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "success", "code": code, "response": res_body}).encode("utf-8"))
+        except Exception as ex:
+            self.send_response(500)
+            self.send_header("Content-Type", "application/json")
+            self._send_cors_headers()
+            self.end_headers()
+            self.wfile.write(json.dumps({"status": "error", "message": str(ex)}).encode("utf-8"))
+
+    def _get_curated_samples(self) -> List[Dict[str, Any]]:
+        """Returns a list of curated clinical demonstration cases."""
+        samples_info = [
+            {
+                "id": "ISIC_0024341",
+                "label": "Case 1: Melanocytic Nevus (nv) — High Confidence Clear Benign",
+                "code": "nv",
+                "scenario": "Clear Benign Auto-Triage",
+                "expected_decision": "AUTO_TRIAGE",
+                "context": {"age": 35, "sex": "female", "localization": "lower extremity"},
+                "description": "Symmetrical pigment network, regular border, young adult extremity lesion. Passes all safety checks."
+            },
+            {
+                "id": "ISIC_0024332",
+                "label": "Case 2: Invasive Melanoma (mel) — High Suspicion ABCD",
+                "code": "mel",
+                "scenario": "Malignancy Presentation Referral",
+                "expected_decision": "REFER",
+                "context": {"age": 68, "sex": "male", "localization": "back"},
+                "description": "High geometric asymmetry, irregular notched border, color variegation. Mandatory specialist referral."
+            },
+            {
+                "id": "ISIC_0024330",
+                "label": "Case 3: Basal Cell Carcinoma (bcc) — Telangiectasia",
+                "code": "bcc",
+                "scenario": "Malignancy Presentation Referral",
+                "expected_decision": "REFER",
+                "context": {"age": 72, "sex": "male", "localization": "face"},
+                "description": "Translucent nodule on chronic sun-damaged facial zone. Mandatory specialist referral."
+            },
+            {
+                "id": "ISIC_0024317",
+                "label": "Case 4: Melanocytic Nevus in Elderly (nv) — High-Risk Context Veto",
+                "code": "nv",
+                "scenario": "Safety Sentinel Context Veto",
+                "expected_decision": "REFER",
+                "context": {"age": 78, "sex": "male", "localization": "scalp"},
+                "description": "Benign nevus diagnosed in elderly scalp region without 85% confidence hurdle; Safety Rule S4 triggers veto."
+            },
+            {
+                "id": "ISIC_0024340",
+                "label": "Case 5: Benign Keratosis (bkl) — Differential Ambiguity",
+                "code": "bkl",
+                "scenario": "Diagnostic Uncertainty Referral",
+                "expected_decision": "REFER",
+                "context": {"age": 55, "sex": "female", "localization": "trunk"},
+                "description": "Close differential between seborrheic keratosis and atypical nevus. Referred for dermoscopy verification."
+            },
+            {
+                "id": "sample_blurry",
+                "label": "Case 6: Out-of-Focus Capture — Quality Gatekeeper RE_IMAGE",
+                "code": "nv",
+                "scenario": "Image Quality Failure RE_IMAGE",
+                "expected_decision": "RE_IMAGE",
+                "context": {"age": 45, "sex": "female", "localization": "abdomen"},
+                "description": "Severe motion blur (Laplacian variance < 15.0). Policy Rule 1 mandates re-capture while preserving preliminary diagnosis."
+            },
+            {
+                "id": "sample_glare",
+                "label": "Case 7: Specular Glare Saturation — Flash Artifact RE_IMAGE",
+                "code": "nv",
+                "scenario": "Specular Glare Failure RE_IMAGE",
+                "expected_decision": "RE_IMAGE",
+                "context": {"age": 50, "sex": "male", "localization": "chest"},
+                "description": "Flash reflection creates 8% white saturation void across lesion core. Re-imaging requested."
+            }
+        ]
+
+        # Attach base64 image data for each sample
+        for s in samples_info:
+            sid = s["id"]
+            img = None
+            if sid == "sample_blurry":
+                # Generate synthetic blurred version of ISIC_0024341
+                orig_p = os.path.join(WORKSPACE_ROOT, "Health", "eval", "images", "ISIC_0024341.jpg")
+                if os.path.exists(orig_p):
+                    img = Image.open(orig_p).convert("RGB").filter(ImageFilter.GaussianBlur(radius=6.0))
+            elif sid == "sample_glare":
+                # Generate synthetic specular glare
+                orig_p = os.path.join(WORKSPACE_ROOT, "Health", "eval", "images", "ISIC_0024341.jpg")
+                if os.path.exists(orig_p):
+                    img = Image.open(orig_p).convert("RGB")
+                    arr = np.array(img)
+                    h, w, _ = arr.shape
+                    cy, cx = h // 2, w // 2
+                    y, x = np.ogrid[:h, :w]
+                    glare_mask = ((x - cx)**2 + (y - cy)**2) <= (min(h, w) * 0.18)**2
+                    arr[glare_mask] = [255, 255, 255]
+                    img = Image.fromarray(arr)
+            else:
+                p = os.path.join(WORKSPACE_ROOT, "Health", "eval", "images", f"{sid}.jpg")
+                if os.path.exists(p):
+                    img = Image.open(p).convert("RGB")
+
+            if img is not None:
+                img_small = img.resize((224, 224))
+                buf = io.BytesIO()
+                img_small.save(buf, format="JPEG", quality=85)
+                s["image_b64"] = "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode("utf-8")
+            else:
+                s["image_b64"] = ""
+
+        return samples_info
+
+if __name__ == "__main__":
+    from http.server import HTTPServer
+    port = int(os.environ.get("PORT", 8000))
+    server = HTTPServer(("0.0.0.0", port), handler)
+    print(f"[*] Agentic DermaGuard Server running on http://localhost:{port}")
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        print("\n[*] Server gracefully stopped.")
