@@ -382,11 +382,17 @@
     let currentSample = null;
     let currentThresholdPreset = 'Balanced';
     let currentCustomImageB64 = '';
+    let lastAnalysisResult = null;
 
     document.addEventListener('DOMContentLoaded', async () => {
       renderRequiredStrip();
       await loadCuratedSamples();
-      onSelectSampleCase();
+
+      // Check if previous screening session exists in storage
+      const restored = restoreScreeningSession();
+      if (!restored) {
+        onSelectSampleCase();
+      }
     });
 
     async function loadCuratedSamples() {
@@ -397,6 +403,65 @@
         }
       } catch (e) {
         console.warn('Could not load samples from API:', e);
+      }
+    }
+
+    function saveScreeningSession() {
+      try {
+        const session = {
+          sampleId: document.getElementById('case-select').value,
+          customImageB64: currentCustomImageB64,
+          imgSrc: document.getElementById('view-original').src,
+          badgeText: document.getElementById('case-status-badge').textContent,
+          age: document.getElementById('input-age').value,
+          sex: document.getElementById('input-sex').value,
+          localization: document.getElementById('input-loc').value,
+          preset: currentThresholdPreset,
+          result: lastAnalysisResult,
+          timestamp: Date.now()
+        };
+        sessionStorage.setItem('dermaguard_screening_state', JSON.stringify(session));
+        localStorage.setItem('dermaguard_screening_state', JSON.stringify(session));
+      } catch (e) {
+        console.warn('Could not persist screening session:', e);
+      }
+    }
+
+    function restoreScreeningSession() {
+      try {
+        const raw = sessionStorage.getItem('dermaguard_screening_state') || localStorage.getItem('dermaguard_screening_state');
+        if (!raw) return false;
+        const s = JSON.parse(raw);
+        if (!s || !s.result) return false;
+
+        if (s.sampleId) document.getElementById('case-select').value = s.sampleId;
+        if (s.age !== undefined) document.getElementById('input-age').value = s.age;
+        if (s.sex !== undefined) document.getElementById('input-sex').value = s.sex;
+        if (s.localization !== undefined) document.getElementById('input-loc').value = s.localization;
+        if (s.preset) setThresholdPreset(s.preset, false);
+
+        if (s.customImageB64) {
+          currentCustomImageB64 = s.customImageB64;
+          document.getElementById('view-original').src = s.customImageB64;
+        } else if (s.imgSrc) {
+          document.getElementById('view-original').src = s.imgSrc;
+        }
+
+        if (s.badgeText) {
+          document.getElementById('case-status-badge').textContent = s.badgeText;
+        }
+
+        // Match sample if not custom
+        if (!s.customImageB64 && s.sampleId && curatedSamples.length > 0) {
+          currentSample = curatedSamples.find(cs => cs.id === s.sampleId) || null;
+        }
+
+        lastAnalysisResult = s.result;
+        renderScreeningResults(s.result);
+        return true;
+      } catch (e) {
+        console.warn('Could not restore session:', e);
+        return false;
       }
     }
 
@@ -436,7 +501,7 @@
       reader.readAsDataURL(file);
     }
 
-    function setThresholdPreset(preset) {
+    function setThresholdPreset(preset, triggerRun = true) {
       currentThresholdPreset = preset;
       ['Conservative', 'Balanced', 'Aggressive'].forEach(p => {
         const btn = document.getElementById(`btn-preset-${p.toLowerCase()}`);
@@ -448,8 +513,10 @@
           }
         }
       });
-      showToast(`Selected ${preset} preset`, 'info');
-      runAnalysis();
+      if (triggerRun) {
+        showToast(`Selected ${preset} preset`, 'info');
+        runAnalysis();
+      }
     }
 
     function toggleCardAudit(auditId) {
@@ -612,7 +679,22 @@
       a6Badge.className = `text-xs font-mono px-2.5 py-0.5 rounded-full font-bold ${getDecisionBadgeClass(a6.status || a6.decision)}`;
       document.getElementById('a6-explanation').textContent = a6.explanation || '';
       renderEvidenceAuditTable('a6-evidence-table', a6.evidence);
+
+      // Persist state across navigation
+      lastAnalysisResult = res;
+      saveScreeningSession();
     }
+
+    // Attach listeners to preserve input edits across page changes
+    document.addEventListener('DOMContentLoaded', () => {
+      ['input-age', 'input-sex', 'input-loc'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+          el.addEventListener('input', saveScreeningSession);
+          el.addEventListener('change', saveScreeningSession);
+        }
+      });
+    });
   </script>
 </body>
 </html>

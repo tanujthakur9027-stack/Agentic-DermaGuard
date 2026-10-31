@@ -108,13 +108,31 @@ class handler(BaseHTTPRequestHandler):
             except Exception:
                 pass
 
+    def _get_request_path(self) -> Tuple[str, str]:
+        """
+        Extracts the canonical request path and a search corpus across local and Vercel serverless.
+        Returns: (primary_path, path_corpus)
+        """
+        raw_path = getattr(self, "path", "").split("?")[0]
+        fwd_uri = (self.headers.get("x-forwarded-uri") or self.headers.get("x-real-path") or "").split("?")[0]
+        matched = (self.headers.get("x-matched-path") or self.headers.get("x-vercel-matched-path") or "").split("?")[0]
+
+        candidates = [raw_path, fwd_uri, matched]
+        primary_path = raw_path
+        for c in candidates:
+            if c and c not in ("", "/", "/api", "/api/index.py", "/api/index"):
+                primary_path = c
+                break
+
+        corpus = f"{raw_path.lower()} {fwd_uri.lower()} {matched.lower()} {primary_path.lower()}"
+        return primary_path, corpus
+
     def _handle_GET(self):
-        matched_path = self.headers.get("x-matched-path") or self.headers.get("x-vercel-matched-path") or self.path
-        path = matched_path.split("?")[0]
+        primary_path, corpus = self._get_request_path()
 
         # Static assets and HTML pages (for local standalone execution)
-        if not path.startswith("/api"):
-            rel = "index.html" if path in ("", "/") else path.lstrip("/")
+        if not primary_path.startswith("/api"):
+            rel = "index.html" if primary_path in ("", "/") else primary_path.lstrip("/")
             file_path = os.path.normpath(os.path.join(PUBLIC_DIR, rel))
             if os.path.commonpath([PUBLIC_DIR, file_path]) == PUBLIC_DIR and os.path.isfile(file_path):
                 mime = "text/plain"
@@ -142,16 +160,16 @@ class handler(BaseHTTPRequestHandler):
                 with open(file_path, "rb") as f:
                     self.wfile.write(f.read())
                 return
-            elif path not in ("", "/"):
+            elif primary_path not in ("", "/"):
                 self.send_response(404)
                 self.send_header("Content-Type", "application/json")
                 self._send_cors_headers()
                 self.end_headers()
-                self.wfile.write(json.dumps({"error": f"File not found: {path}"}).encode("utf-8"))
+                self.wfile.write(json.dumps({"error": f"File not found: {primary_path}"}).encode("utf-8"))
                 return
 
         # 1. Download sample submission CSV
-        if "download" in path or path.endswith("submission-sample"):
+        if "download" in corpus or "submission-sample" in corpus:
             if os.path.exists(SAMPLE_CSV_FILE):
                 self.send_response(200)
                 self.send_header("Content-Type", "text/csv")
@@ -168,7 +186,7 @@ class handler(BaseHTTPRequestHandler):
                 self.wfile.write(json.dumps({"error": "Submission sample CSV not found"}).encode("utf-8"))
 
         # 2. Validation Benchmark Metrics
-        elif "benchmark" in path:
+        elif "benchmark" in corpus:
             try:
                 if os.path.exists(BENCHMARK_FILE):
                     with open(BENCHMARK_FILE, "r", encoding="utf-8") as f:
@@ -188,7 +206,7 @@ class handler(BaseHTTPRequestHandler):
                 self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
 
         # 3. Threshold Registry & Presets
-        elif "thresholds" in path:
+        elif "thresholds" in corpus:
             try:
                 current_values = load_thresholds(reload=True)
                 registry = get_registry()
@@ -211,7 +229,7 @@ class handler(BaseHTTPRequestHandler):
                 self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
 
         # 4. Curated Demo Samples
-        elif "samples" in path:
+        elif "samples" in corpus:
             try:
                 samples = self._get_curated_samples()
                 self.send_response(200)
@@ -277,8 +295,7 @@ class handler(BaseHTTPRequestHandler):
                 pass
 
     def _handle_POST(self):
-        matched_path = self.headers.get("x-matched-path") or self.headers.get("x-vercel-matched-path") or self.path
-        path = matched_path.split("?")[0]
+        primary_path, corpus = self._get_request_path()
         content_length = int(self.headers.get("Content-Length", 0))
         post_data = self.rfile.read(content_length)
 
@@ -288,7 +305,7 @@ class handler(BaseHTTPRequestHandler):
             body = {}
 
         # 1. Reset Thresholds Endpoint
-        if path.endswith("/reset") or "reset" in path:
+        if "reset" in corpus:
             try:
                 preset = body.get("preset", "Balanced")
                 updated = reset_thresholds(preset)
@@ -311,7 +328,7 @@ class handler(BaseHTTPRequestHandler):
             return
 
         # 2. Save Thresholds Endpoint
-        if path.endswith("/thresholds") or path == "/api/thresholds":
+        if "thresholds" in corpus and not ("analyze" in corpus or "triage" in corpus):
             try:
                 new_th = body.get("thresholds", body)
                 updated = save_thresholds(new_th)
@@ -333,7 +350,7 @@ class handler(BaseHTTPRequestHandler):
             return
 
         # 3. Summit Submission Upload Endpoint
-        if "submit" in path and not body.get("image_base64"):
+        if "submit" in corpus and not body.get("image_base64"):
             self._handle_summit_submission(body)
             return
 

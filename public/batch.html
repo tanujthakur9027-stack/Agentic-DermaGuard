@@ -222,6 +222,12 @@
             <i class="fa-solid fa-download text-xs"></i>
             <span>Export Submission CSV</span>
           </button>
+
+          <!-- Clear Table Button -->
+          <button onclick="clearBatchResults()" class="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800 text-xs font-mono transition flex items-center gap-1">
+            <i class="fa-solid fa-trash-can text-xs"></i>
+            <span>Clear</span>
+          </button>
         </div>
       </div>
 
@@ -284,6 +290,57 @@
     let shouldStopProcessing = false;
     let startTime = 0;
     let timerInterval = null;
+
+    document.addEventListener('DOMContentLoaded', () => {
+      restoreBatchSession();
+    });
+
+    function saveBatchSession() {
+      try {
+        const batchData = {
+          results: batchResults,
+          groundTruth: groundTruthLabels,
+          timestamp: Date.now()
+        };
+        sessionStorage.setItem('dermaguard_batch_state', JSON.stringify(batchData));
+        localStorage.setItem('dermaguard_batch_state', JSON.stringify(batchData));
+      } catch (e) {
+        console.warn('Could not persist batch state:', e);
+      }
+    }
+
+    function restoreBatchSession() {
+      try {
+        const raw = sessionStorage.getItem('dermaguard_batch_state') || localStorage.getItem('dermaguard_batch_state');
+        if (!raw) return false;
+        const b = JSON.parse(raw);
+        if (!b || !b.results || b.results.length === 0) return false;
+
+        batchResults = b.results;
+        if (b.groundTruth) groundTruthLabels = b.groundTruth;
+
+        updateKpiMetrics();
+        applyTableFilter();
+        return true;
+      } catch (e) {
+        console.warn('Could not restore batch state:', e);
+        return false;
+      }
+    }
+
+    function clearBatchResults() {
+      batchResults = [];
+      groundTruthLabels = {};
+      try {
+        sessionStorage.removeItem('dermaguard_batch_state');
+        localStorage.removeItem('dermaguard_batch_state');
+      } catch (e) {}
+      updateKpiMetrics();
+      applyTableFilter();
+      document.getElementById('batch-file-count').textContent = 'No images staged';
+      document.getElementById('btn-start-batch').disabled = true;
+      showToast('Cleared batch table and results', 'info');
+    }
 
     function onBatchFilesSelected(event) {
       const files = Array.from(event.target.files);
@@ -411,6 +468,7 @@
 
           updateKpiMetrics();
           applyTableFilter();
+          saveBatchSession();
         }
       }
 
@@ -423,6 +481,7 @@
 
       clearInterval(timerInterval);
       isProcessing = false;
+      saveBatchSession();
       document.getElementById('btn-start-batch').disabled = false;
       document.getElementById('btn-stop-batch').disabled = true;
       document.getElementById('progress-label').textContent = shouldStopProcessing ? 'Processing stopped' : 'Batch evaluation complete!';
