@@ -111,6 +111,9 @@ class handler(BaseHTTPRequestHandler):
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-API-KEY")
 
+    def do_HEAD(self):
+        self.do_GET()
+
     def do_OPTIONS(self):
         self.send_response(200)
         self._send_cors_headers()
@@ -201,6 +204,12 @@ class handler(BaseHTTPRequestHandler):
         if "/api/batch/download/" in primary_path:
             job_id = primary_path.split("/api/batch/download/")[1].split("/")[0].split("?")[0]
             csv_text = get_submission_csv_content(job_id)
+            if csv_text is None or job_id in ("default", "current", "official"):
+                sub_path = os.path.join(WORKSPACE_ROOT, "outputs", "submission.csv")
+                if os.path.exists(sub_path):
+                    with open(sub_path, "r", encoding="utf-8") as f:
+                        csv_text = f.read()
+
             if csv_text is not None:
                 self.send_response(200)
                 self.send_header("Content-Type", "text/csv")
@@ -252,6 +261,48 @@ class handler(BaseHTTPRequestHandler):
             self._send_cors_headers()
             self.end_headers()
             self.wfile.write(json.dumps({"status": "success", "jobs": jobs}).encode("utf-8"))
+            return
+
+        if primary_path == "/api/batch/precomputed":
+            try:
+                detailed_path = os.path.join(WORKSPACE_ROOT, "outputs", "detailed_report.json")
+                if os.path.exists(detailed_path):
+                    with open(detailed_path, "r", encoding="utf-8") as f:
+                        full_data = json.load(f)
+                    # Extract lightweight table rows
+                    compact_rows = []
+                    for r in full_data:
+                        compact_rows.append({
+                            "image_id": r.get("image_id"),
+                            "prediction": r.get("prediction"),
+                            "confidence": r.get("confidence", 0.5),
+                            "decision": r.get("decision", "REFER"),
+                            "policy_rule": r.get("policy_rule", ""),
+                            "traceable_rationale": r.get("traceable_rationale", ""),
+                            "traceable_chain": r.get("traceable_chain", ""),
+                            "agents": {
+                                "A1_quality": {"status": r.get("agents", {}).get("A1_quality", {}).get("status", "PASS")},
+                                "A2_diagnosis": {"status": r.get("prediction", "nv")},
+                                "A3_lesion_analysis": {"status": r.get("agents", {}).get("A3_lesion_analysis", {}).get("status", "OK")},
+                                "A4_context_reasoning": {"status": r.get("agents", {}).get("A4_context_reasoning", {}).get("status", "OK")},
+                                "A5_safety": {"status": r.get("agents", {}).get("A5_safety", {}).get("status", "PASS")},
+                                "A6_coordinator": {"status": r.get("decision", "REFER")}
+                            },
+                            "runtime_ms": r.get("runtime_ms", 0)
+                        })
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/json")
+                    self._send_cors_headers()
+                    self.end_headers()
+                    self.wfile.write(json.dumps({"status": "success", "count": len(compact_rows), "rows": compact_rows}).encode("utf-8"))
+                    return
+            except Exception as e:
+                pass
+            self.send_response(404)
+            self.send_header("Content-Type", "application/json")
+            self._send_cors_headers()
+            self.end_headers()
+            self.wfile.write(json.dumps({"error": "No precomputed results found"}).encode("utf-8"))
             return
 
         # 1. Download sample submission CSV
@@ -349,7 +400,9 @@ class handler(BaseHTTPRequestHandler):
         # 6. Hidden 200 Pre-Computed Six-Agent Audit Trace
         elif "hidden-audit" in corpus or "hidden_audit" in corpus:
             try:
-                audit_file = os.path.join(WORKSPACE_ROOT, "outputs", "hidden_200_audit.json")
+                audit_file = os.path.join(WORKSPACE_ROOT, "outputs", "detailed_report.json")
+                if not os.path.exists(audit_file):
+                    audit_file = os.path.join(WORKSPACE_ROOT, "outputs", "hidden_200_audit.json")
                 if os.path.exists(audit_file):
                     with open(audit_file, "r", encoding="utf-8") as f:
                         data = json.load(f)
@@ -488,9 +541,10 @@ class handler(BaseHTTPRequestHandler):
         if "/api/batch/validate" in primary_path:
             job_id = primary_path.split("/api/batch/validate/")[1].split("/")[0].split("?")[0] if "/validate/" in primary_path else body.get("job_id")
             job = get_job(job_id)
-            if job:
+            csv_path = job["submission_csv"] if job else os.path.join(WORKSPACE_ROOT, "outputs", "submission.csv")
+            if os.path.exists(csv_path):
                 from scripts.validate_submission import validate_submission
-                passed, errs, stats = validate_submission(job["submission_csv"], ids_path=None)
+                passed, errs, stats = validate_submission(csv_path, ids_path=None)
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json")
                 self._send_cors_headers()
@@ -507,16 +561,17 @@ class handler(BaseHTTPRequestHandler):
                 self.send_header("Content-Type", "application/json")
                 self._send_cors_headers()
                 self.end_headers()
-                self.wfile.write(json.dumps({"error": f"Job {job_id} not found"}).encode("utf-8"))
+                self.wfile.write(json.dumps({"error": f"Submission file not found"}).encode("utf-8"))
             return
 
         if "/api/batch/submit" in primary_path:
             job_id = primary_path.split("/api/batch/submit/")[1].split("/")[0].split("?")[0] if "/submit/" in primary_path else body.get("job_id")
             job = get_job(job_id)
-            if job:
+            csv_path = job["submission_csv"] if job else os.path.join(WORKSPACE_ROOT, "outputs", "submission.csv")
+            if os.path.exists(csv_path):
                 from scripts.submit import execute_submission
                 dry_run = bool(body.get("dry_run", False))
-                passed, resp_data = execute_submission(job["submission_csv"], dry_run=dry_run, yes=True)
+                passed, resp_data = execute_submission(csv_path, dry_run=dry_run, yes=True)
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json")
                 self._send_cors_headers()
@@ -532,7 +587,7 @@ class handler(BaseHTTPRequestHandler):
                 self.send_header("Content-Type", "application/json")
                 self._send_cors_headers()
                 self.end_headers()
-                self.wfile.write(json.dumps({"error": f"Job {job_id} not found"}).encode("utf-8"))
+                self.wfile.write(json.dumps({"error": f"Submission file not found"}).encode("utf-8"))
             return
 
         # 1. Reset Thresholds Endpoint
@@ -887,9 +942,9 @@ class handler(BaseHTTPRequestHandler):
         return records
 
 if __name__ == "__main__":
-    from http.server import HTTPServer
+    from http.server import ThreadingHTTPServer
     port = int(os.environ.get("PORT", 8000))
-    server = HTTPServer(("0.0.0.0", port), handler)
+    server = ThreadingHTTPServer(("0.0.0.0", port), handler)
     print(f"[*] Agentic DermaGuard Server running on http://localhost:{port}")
     try:
         server.serve_forever()
