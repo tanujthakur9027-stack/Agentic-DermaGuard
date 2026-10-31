@@ -112,8 +112,8 @@ function formatScore(num) {
 }
 
 function getDecisionBadgeClass(decision) {
-  if (decision === 'AUTO_TRIAGE') return 'badge-auto';
-  if (decision === 'RE_IMAGE') return 'badge-reimage';
+  if (decision === 'AUTO_TRIAGE' || decision === 'AUTO-TRIAGE') return 'badge-auto';
+  if (decision === 'RE_IMAGE' || decision === 'RE-IMAGE') return 'badge-reimage';
   return 'badge-refer';
 }
 

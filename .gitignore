@@ -9,3 +9,5 @@ __pycache__/
 *.zip
 *.pkl
 .vercel
+outputs/jobs/
+outputs/partial.jsonl

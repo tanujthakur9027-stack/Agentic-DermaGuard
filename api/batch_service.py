@@ -307,9 +307,7 @@ def _batch_job_worker(job_id: str):
     sub_df = pd.DataFrame(submission_rows)
     sub_df.to_csv(job["submission_csv"], index=False)
 
-    # Also copy to root outputs/submission.csv for convenience
-    root_sub = os.path.join(PROJECT_ROOT, "outputs", "submission.csv")
-    sub_df.to_csv(root_sub, index=False)
+    # sub_df.to_csv(root_sub, index=False)
 
     with JOBS_LOCK:
         if not job["cancelled"]:
