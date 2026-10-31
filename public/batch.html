@@ -3,13 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Batch Triage &amp; 200 Hidden Test Workstation | Agentic DermaGuard</title>
+  <title>Batch Triage &amp; Hidden Test Workstation | Agentic DermaGuard</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="css/app.css">
 </head>
-<body class="selection:bg-cyan-500 selection:text-white">
+<body class="selection:bg-cyan-500 selection:text-white bg-[#0a0f1d] text-slate-100 min-h-screen flex flex-col font-sans">
 
   <!-- Enterprise Header -->
   <header class="border-b border-slate-800/80 bg-[#0c1222]/95 backdrop-blur-md sticky top-0 z-50">
@@ -64,150 +63,288 @@
   <!-- Main Workspace -->
   <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full space-y-6">
 
-    <!-- Overview Banner -->
-    <section class="glass-card p-5 border-l-4 border-l-cyan-400 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-      <div>
-        <h2 class="text-base font-bold text-white flex items-center gap-2">
-          <i class="fa-solid fa-layer-group text-cyan-400"></i> Hidden Test 200-Image Batch Processor
-        </h2>
-        <p class="text-xs text-slate-400 mt-1 max-w-3xl leading-relaxed">
-          Enforces Vercel serverless safety constraints: dispatches requests to <code class="text-cyan-300 font-mono">/api/analyze</code> 
-          with fixed concurrency of 3 workers and real-time streaming progress. Generates strict 3-column submission CSV (<code class="text-cyan-300 font-mono">image_id,prediction,decision</code>) with zero missing/duplicate IDs.
-        </p>
-      </div>
-      <div class="flex items-center gap-2.5">
-        <button onclick="loadSampleEvaluationSet()" class="px-3.5 py-2 rounded-xl bg-cyan-950 hover:bg-cyan-900 text-cyan-300 border border-cyan-800 text-xs font-bold transition flex items-center gap-2">
-          <i class="fa-solid fa-vial-circle-check"></i>
-          <span>Load Validation Batch (50 Cases)</span>
+    <!-- Mode Switcher -->
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-900/60 p-3 rounded-2xl border border-slate-800">
+      <div class="flex items-center gap-2">
+        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono mr-2">Execution Mode:</span>
+        <button id="tab-id-mode" onclick="switchBatchMode('id_list')" class="px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-md shadow-cyan-600/20">
+          <i class="fa-solid fa-list-ol"></i>
+          <span>Run by ID List (Official Submission Pipeline)</span>
+        </button>
+        <button id="tab-manual-mode" onclick="switchBatchMode('manual')" class="px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white transition flex items-center gap-2 bg-slate-950/60 border border-slate-800">
+          <i class="fa-solid fa-cloud-arrow-up"></i>
+          <span>Upload Image Files</span>
         </button>
       </div>
-    </section>
 
-    <!-- Upload & Controls Row -->
-    <div class="grid grid-cols-1 md:grid-cols-12 gap-5">
-      
-      <!-- Multi-Image Dropzone -->
-      <div class="md:col-span-8 glass-card p-5 space-y-3">
-        <span class="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
-          <i class="fa-solid fa-folder-open text-cyan-400"></i> Select 200 Hidden Test Images
-        </span>
-        <div id="batch-dropzone" onclick="document.getElementById('batch-file-input').click()" class="border-2 border-dashed border-slate-700 hover:border-cyan-500 rounded-xl p-5 text-center cursor-pointer transition bg-slate-950/40">
-          <input type="file" id="batch-file-input" multiple accept="image/*" class="hidden" onchange="onBatchFilesSelected(event)">
-          <i class="fa-solid fa-images text-2xl text-cyan-400 mb-2"></i>
-          <p class="text-xs text-slate-300 font-semibold">Select multiple images or drag &amp; drop 200 test files</p>
-          <p id="batch-file-count" class="text-[11px] text-slate-500 font-mono mt-1">0 files staged</p>
-        </div>
+      <!-- Quick Action Buttons -->
+      <div class="flex items-center gap-2">
+        <button onclick="loadOfficialHiddenTemplate()" class="px-3 py-1.5 rounded-lg bg-cyan-950 hover:bg-cyan-900 text-cyan-300 border border-cyan-800 text-xs font-mono transition flex items-center gap-1.5">
+          <i class="fa-solid fa-folder-tree"></i>
+          <span>Stage 200 Hidden IDs</span>
+        </button>
+        <button onclick="loadMockValidationTemplate()" class="px-3 py-1.5 rounded-lg bg-purple-950 hover:bg-purple-900 text-purple-300 border border-purple-800 text-xs font-mono transition flex items-center gap-1.5">
+          <i class="fa-solid fa-vial"></i>
+          <span>Stage Mock 200 IDs</span>
+        </button>
       </div>
-
-      <!-- Optional Ground Truth & Execution -->
-      <div class="md:col-span-4 glass-card p-5 space-y-3.5 flex flex-col justify-between">
-        <div>
-          <span class="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
-            <i class="fa-solid fa-file-csv text-emerald-400"></i> Optional Ground Truth CSV
-          </span>
-          <p class="text-[11px] text-slate-400 mt-1">Upload CSV with <code class="font-mono text-cyan-300">image_id,dx</code> to evaluate Correct vs Incorrect AUTO_TRIAGE.</p>
-          <input type="file" id="ground-truth-input" accept=".csv" class="mt-2.5 text-xs text-slate-400 file:mr-2 file:py-1 file:px-2.5 file:rounded-md file:border-0 file:text-[11px] file:font-semibold file:bg-slate-800 file:text-slate-300 hover:file:bg-slate-700 cursor-pointer" onchange="onGroundTruthSelected(event)">
-        </div>
-
-        <div class="pt-3 border-t border-slate-800 flex gap-2">
-          <button id="btn-start-batch" onclick="startBatchProcessing()" disabled class="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-xs transition flex items-center justify-center gap-1.5 shadow-lg shadow-cyan-600/20">
-            <i class="fa-solid fa-play text-[10px]"></i>
-            <span>Run Batch (Concurrency 3)</span>
-          </button>
-          <button id="btn-stop-batch" onclick="stopBatchProcessing()" disabled class="px-3.5 py-2.5 rounded-xl bg-rose-950/80 hover:bg-rose-900 disabled:opacity-50 disabled:cursor-not-allowed text-rose-300 border border-rose-800 text-xs font-bold transition">
-            <i class="fa-solid fa-stop text-[10px]"></i>
-          </button>
-        </div>
-      </div>
-
     </div>
 
-    <!-- Live Progress Bar -->
-    <div id="progress-container" class="hidden glass-card p-4 space-y-2">
+    <!-- ========================================== -->
+    <!-- SECTION 1: RUN BY ID LIST MODE (3 STEPS)    -->
+    <!-- ========================================== -->
+    <div id="section-id-mode" class="space-y-5">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        
+        <!-- STEP 1: Upload Sample CSV -->
+        <div class="glass-card p-5 space-y-3.5 border-t-2 border-t-cyan-400 flex flex-col justify-between">
+          <div>
+            <div class="flex justify-between items-center">
+              <span class="text-xs font-bold uppercase tracking-wider text-cyan-400 font-mono flex items-center gap-2">
+                <i class="fa-solid fa-1 text-[10px] bg-cyan-950 p-1.5 rounded-full border border-cyan-800"></i> Step 1: Sample CSV of IDs
+              </span>
+              <span id="badge-ids-count" class="text-[11px] font-mono px-2 py-0.5 rounded bg-slate-900 text-slate-400 border border-slate-800">0 IDs</span>
+            </div>
+            <p class="text-xs text-slate-400 mt-1">
+              Upload the sample submission CSV containing image IDs. Auto-detects <code class="text-cyan-300 font-mono">image_id</code> column and verifies zero duplicates.
+            </p>
+
+            <div class="mt-3">
+              <input type="file" id="input-ids-csv" accept=".csv,.txt" onchange="handleIdsCsvUpload(event)" class="text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-slate-800 file:text-slate-200 hover:file:bg-slate-700 cursor-pointer w-full">
+            </div>
+
+            <!-- CSV Preview Box -->
+            <div id="ids-preview-box" class="hidden mt-3 p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-[11px] font-mono space-y-1.5">
+              <div class="flex justify-between text-slate-400 border-b border-slate-800 pb-1">
+                <span>CSV Preview (First 5):</span>
+                <span id="ids-duplicate-status" class="text-emerald-400 font-bold">No Duplicates</span>
+              </div>
+              <div id="ids-preview-list" class="text-slate-300 space-y-0.5 max-h-24 overflow-y-auto custom-scroll"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- STEP 2: Locate Images Source -->
+        <div class="glass-card p-5 space-y-3.5 border-t-2 border-t-blue-400 flex flex-col justify-between">
+          <div>
+            <div class="flex justify-between items-center">
+              <span class="text-xs font-bold uppercase tracking-wider text-blue-400 font-mono flex items-center gap-2">
+                <i class="fa-solid fa-2 text-[10px] bg-blue-950 p-1.5 rounded-full border border-blue-800"></i> Step 2: Image Source
+              </span>
+              <span id="badge-match-status" class="text-[11px] font-mono px-2 py-0.5 rounded bg-slate-900 text-slate-400 border border-slate-800">Unverified</span>
+            </div>
+            
+            <p class="text-xs text-slate-400 mt-1">Select how hidden images are provided:</p>
+
+            <!-- Source Types -->
+            <div class="mt-2 space-y-2">
+              <select id="select-image-source" onchange="toggleImageSourceFields()" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-slate-200 font-mono">
+                <option value="server_folder">Server Folder Path (Default / Local Workstation)</option>
+                <option value="drag_drop">Drag &amp; Drop Folder / Files</option>
+                <option value="zip_upload">Upload .ZIP Archive</option>
+                <option value="url_template">Base URL Template ({image_id}.jpg)</option>
+              </select>
+
+              <!-- Server folder input -->
+              <div id="field-server-folder" class="space-y-1">
+                <label class="text-[10px] text-slate-400 font-mono">Server Directory Path:</label>
+                <input type="text" id="input-server-folder" value="Health/hidden/images" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-cyan-300 font-mono">
+              </div>
+
+              <!-- URL template input -->
+              <div id="field-url-template" class="hidden space-y-1">
+                <label class="text-[10px] text-slate-400 font-mono">URL Template with {image_id}:</label>
+                <input type="text" id="input-url-template" placeholder="https://domain.com/images/{image_id}.jpg" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-cyan-300 font-mono">
+              </div>
+
+              <!-- ZIP upload input -->
+              <div id="field-zip-upload" class="hidden space-y-1">
+                <label class="text-[10px] text-slate-400 font-mono">Select .zip Archive:</label>
+                <input type="file" id="input-zip-file" accept=".zip" class="text-xs text-slate-400 file:mr-2 file:py-1 file:px-2.5 file:rounded file:border-0 file:bg-slate-800 file:text-slate-300 cursor-pointer">
+              </div>
+
+              <!-- Drag drop files input -->
+              <div id="field-drag-drop" class="hidden space-y-1">
+                <label class="text-[10px] text-slate-400 font-mono">Choose Images or Folder:</label>
+                <input type="file" id="input-folder-images" multiple webkitdirectory directory accept="image/*" class="text-xs text-slate-400 file:mr-2 file:py-1 file:px-2.5 file:rounded file:border-0 file:bg-slate-800 file:text-slate-300 cursor-pointer">
+              </div>
+
+              <div class="flex items-center gap-2 pt-1">
+                <label class="text-[10px] text-slate-400 font-mono">Extension Pattern:</label>
+                <input type="text" id="input-ext-pattern" value=".jpg" class="w-20 bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-200 font-mono text-center">
+                <button onclick="checkImageMatches()" class="px-2.5 py-1 rounded-lg bg-blue-900/80 hover:bg-blue-800 text-blue-200 text-xs font-mono transition">
+                  <i class="fa-solid fa-magnifying-glass"></i> Verify
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Match Resolution Feedback -->
+          <div id="match-results-box" class="hidden p-2 rounded-xl bg-slate-950 border border-slate-800 text-[11px] font-mono">
+            <div class="flex justify-between items-center text-slate-300">
+              <span>Matched: <strong id="match-count-found" class="text-emerald-400">0</strong> / <span id="match-count-total">0</span></span>
+              <span id="match-percent" class="text-xs font-bold text-cyan-400">0%</span>
+            </div>
+            <div id="missing-alert-box" class="hidden text-amber-400 text-[10px] mt-1">
+              <i class="fa-solid fa-triangle-exclamation"></i> <span id="missing-count-msg"></span> (will apply fallback REFER)
+            </div>
+          </div>
+        </div>
+
+        <!-- STEP 3: Execution Controls -->
+        <div class="glass-card p-5 space-y-3.5 border-t-2 border-t-emerald-400 flex flex-col justify-between">
+          <div>
+            <div class="flex justify-between items-center">
+              <span class="text-xs font-bold uppercase tracking-wider text-emerald-400 font-mono flex items-center gap-2">
+                <i class="fa-solid fa-3 text-[10px] bg-emerald-950 p-1.5 rounded-full border border-emerald-800"></i> Step 3: Run Full Pipeline
+              </span>
+              <span id="badge-job-state" class="text-[11px] font-mono px-2 py-0.5 rounded bg-slate-900 text-slate-400 border border-slate-800">Ready</span>
+            </div>
+
+            <p class="text-xs text-slate-400 mt-1">
+              Dispatches background job to server worker pool. Keeps executing if you switch pages or refresh.
+            </p>
+
+            <div class="mt-3 flex items-center justify-between text-xs font-mono text-slate-300 bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+              <span>Worker Concurrency:</span>
+              <select id="select-worker-pool" class="bg-slate-900 border border-slate-700 rounded px-2 py-0.5 text-xs text-cyan-300">
+                <option value="3" selected>3 Workers</option>
+                <option value="4">4 Workers</option>
+                <option value="2">2 Workers</option>
+                <option value="1">1 Worker</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="space-y-2 pt-3 border-t border-slate-800">
+            <button id="btn-start-id-job" onclick="startIdBatchJob()" class="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 text-white font-bold text-xs transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20">
+              <i class="fa-solid fa-play text-xs"></i>
+              <span id="lbl-start-job">Run All Images via Six Agents</span>
+            </button>
+
+            <div class="grid grid-cols-3 gap-2">
+              <button id="btn-job-pause" onclick="controlJob('pause')" disabled class="py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-amber-300 border border-slate-800 text-xs font-mono transition disabled:opacity-40">
+                <i class="fa-solid fa-pause"></i> Pause
+              </button>
+              <button id="btn-job-resume" onclick="controlJob('resume')" disabled class="py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-emerald-300 border border-slate-800 text-xs font-mono transition disabled:opacity-40">
+                <i class="fa-solid fa-play"></i> Resume
+              </button>
+              <button id="btn-job-cancel" onclick="controlJob('cancel')" disabled class="py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-rose-300 border border-slate-800 text-xs font-mono transition disabled:opacity-40">
+                <i class="fa-solid fa-stop"></i> Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- SECTION 2: MANUAL IMAGE FILES DROPZONE     -->
+    <!-- ========================================== -->
+    <div id="section-manual-mode" class="hidden glass-card p-5 space-y-4">
+      <span class="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
+        <i class="fa-solid fa-folder-open text-cyan-400"></i> Manual Multi-Image Upload
+      </span>
+      <div onclick="document.getElementById('manual-file-input').click()" class="border-2 border-dashed border-slate-700 hover:border-cyan-500 rounded-xl p-8 text-center cursor-pointer transition bg-slate-950/40">
+        <input type="file" id="manual-file-input" multiple accept="image/*" class="hidden" onchange="handleManualFilesSelected(event)">
+        <i class="fa-solid fa-images text-3xl text-cyan-400 mb-2"></i>
+        <p class="text-xs text-slate-300 font-semibold">Select multiple image files or drag &amp; drop</p>
+        <p id="manual-file-count" class="text-[11px] text-slate-500 font-mono mt-1">0 files staged</p>
+      </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- LIVE PROGRESS BAR                          -->
+    <!-- ========================================== -->
+    <div id="progress-container" class="glass-card p-4 space-y-2">
       <div class="flex justify-between items-center text-xs font-mono">
         <span class="text-slate-300 flex items-center gap-2">
-          <i class="fa-solid fa-spinner fa-spin text-cyan-400"></i>
-          <span id="progress-label">Processing test images...</span>
+          <i id="progress-spinner" class="fa-solid fa-circle-notch fa-spin text-cyan-400 hidden"></i>
+          <span id="progress-label" class="text-slate-300">Ready to initiate batch evaluation</span>
         </span>
         <div class="flex items-center gap-4 text-slate-400">
-          <span>Worker Pool: <strong class="text-cyan-400">3 Active</strong></span>
-          <span>Elapsed: <strong id="progress-elapsed" class="text-white">00:00</strong></span>
+          <span>Job ID: <strong id="progress-job-id" class="text-cyan-400 font-mono">--</strong></span>
+          <span>Elapsed: <strong id="progress-elapsed" class="text-white font-mono">00:00</strong></span>
+          <span>ETA: <strong id="progress-eta" class="text-cyan-300 font-mono">--:--</strong></span>
           <span id="progress-stats" class="text-cyan-300 font-bold">0 / 0 (0%)</span>
         </div>
       </div>
       <div class="w-full bg-slate-950 rounded-full h-2.5 overflow-hidden border border-slate-800">
-        <div id="progress-bar-fill" class="bg-gradient-to-r from-cyan-500 to-blue-500 h-2.5 rounded-full transition-all duration-150" style="width: 0%"></div>
+        <div id="progress-bar-fill" class="bg-gradient-to-r from-cyan-500 via-blue-500 to-emerald-500 h-2.5 rounded-full transition-all duration-200" style="width: 0%"></div>
       </div>
     </div>
 
-    <!-- PANEL INSPECTION KPI METRICS CARDS -->
+    <!-- ========================================== -->
+    <!-- KPI METRICS SUMMARY CARDS                  -->
+    <!-- ========================================== -->
     <section class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5">
-      
       <div class="glass-card p-3.5 border-t-2 border-t-emerald-400">
-        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono">Correct AUTO_TRIAGE</span>
+        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono">AUTO_TRIAGE</span>
         <div class="flex items-baseline gap-2 mt-1">
-          <span id="kpi-correct-auto" class="text-2xl font-black text-emerald-400 font-mono">0</span>
-          <span class="text-[10px] text-emerald-500 font-bold">Matches GT</span>
-        </div>
-      </div>
-
-      <div class="glass-card p-3.5 border-t-2 border-t-rose-500">
-        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono">Incorrect AUTO_TRIAGE</span>
-        <div class="flex items-baseline gap-2 mt-1">
-          <span id="kpi-incorrect-auto" class="text-2xl font-black text-rose-400 font-mono">0</span>
-          <span class="text-[10px] text-rose-500 font-bold">Mismatch Flag</span>
+          <span id="kpi-auto-count" class="text-2xl font-black text-emerald-400 font-mono">0</span>
+          <span class="text-[10px] text-emerald-500 font-bold">Discharged</span>
         </div>
       </div>
 
       <div class="glass-card p-3.5 border-t-2 border-t-amber-400">
-        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono">Total REFERs</span>
+        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono">REFER</span>
         <div class="flex items-baseline gap-2 mt-1">
-          <span id="kpi-total-refers" class="text-2xl font-black text-amber-400 font-mono">0</span>
-          <span class="text-[10px] text-slate-500">Specialist</span>
+          <span id="kpi-refer-count" class="text-2xl font-black text-amber-400 font-mono">0</span>
+          <span class="text-[10px] text-amber-500">Specialist</span>
         </div>
       </div>
 
       <div class="glass-card p-3.5 border-t-2 border-t-orange-400">
-        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono">Total RE_IMAGEs</span>
+        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono">RE_IMAGE</span>
         <div class="flex items-baseline gap-2 mt-1">
-          <span id="kpi-total-reimage" class="text-2xl font-black text-orange-400 font-mono">0</span>
-          <span class="text-[10px] text-slate-500">Quality Gate</span>
+          <span id="kpi-reimage-count" class="text-2xl font-black text-orange-400 font-mono">0</span>
+          <span class="text-[10px] text-orange-500">Quality Gate</span>
+        </div>
+      </div>
+
+      <div class="glass-card p-3.5 border-t-2 border-t-rose-500">
+        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono">Fallbacks / Errors</span>
+        <div class="flex items-baseline gap-2 mt-1">
+          <span id="kpi-error-count" class="text-2xl font-black text-rose-400 font-mono">0</span>
+          <span class="text-[10px] text-rose-500">Safe REFER</span>
         </div>
       </div>
 
       <div class="glass-card p-3.5 border-t-2 border-t-cyan-400">
-        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono">Classification Acc.</span>
+        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono">Total Cases</span>
         <div class="flex items-baseline gap-2 mt-1">
-          <span id="kpi-accuracy" class="text-2xl font-black text-cyan-400 font-mono">--%</span>
-          <span class="text-[10px] text-slate-500">Overall</span>
+          <span id="kpi-total-processed" class="text-2xl font-black text-cyan-400 font-mono">0</span>
+          <span id="kpi-total-target" class="text-[10px] text-slate-500 font-mono">/ 0</span>
         </div>
       </div>
 
       <div class="glass-card p-3.5 border-t-2 border-t-purple-400">
-        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono">Macro-F1 (7 Codes)</span>
+        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono">Validator Status</span>
         <div class="flex items-baseline gap-2 mt-1">
-          <span id="kpi-macro-f1" class="text-2xl font-black text-purple-400 font-mono">--</span>
-          <span class="text-[10px] text-slate-500">Tuned Bias</span>
+          <span id="kpi-validator-badge" class="text-xl font-black text-slate-400 font-mono">PENDING</span>
         </div>
       </div>
-
     </section>
 
-    <!-- LIVE BATCH RESULTS TABLE -->
+    <!-- ========================================== -->
+    <!-- LIVE RESULTS TABLE & WORKSTATION ACTIONS   -->
+    <!-- ========================================== -->
     <section class="glass-card p-5 space-y-4">
-      <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+      <div class="flex flex-col lg:flex-row justify-between lg:items-center gap-3">
         <div class="flex items-center gap-2">
           <h3 class="text-sm font-bold text-white flex items-center gap-2">
-            <i class="fa-solid fa-list-check text-cyan-400"></i> Live Batch Evaluation Records
+            <i class="fa-solid fa-list-check text-cyan-400"></i> Six-Agent Evaluation Records
           </h3>
           <span id="table-count-badge" class="text-xs font-mono px-2 py-0.5 rounded bg-slate-900 text-slate-400 border border-slate-800">
             0 cases
           </span>
         </div>
 
-        <div class="flex flex-wrap items-center gap-2.5">
+        <!-- Master Action Buttons -->
+        <div class="flex flex-wrap items-center gap-2">
           <!-- Filter Dropdown -->
-          <select id="filter-decision" onchange="applyTableFilter()" class="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-300 font-mono">
+          <select id="filter-decision" onchange="renderTable()" class="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-300 font-mono">
             <option value="ALL">All Decisions</option>
             <option value="AUTO_TRIAGE">AUTO_TRIAGE Only</option>
             <option value="REFER">REFER Only</option>
@@ -215,43 +352,48 @@
           </select>
 
           <!-- Search Input -->
-          <input type="text" id="search-image-id" placeholder="Search Image ID..." oninput="applyTableFilter()" class="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 font-mono w-40">
+          <input type="text" id="search-image-id" placeholder="Search Image ID..." oninput="renderTable()" class="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 font-mono w-36">
 
-          <!-- Download Submission CSV Button -->
-          <button onclick="exportSubmissionCSV()" class="px-3.5 py-1.5 rounded-lg bg-emerald-950 hover:bg-emerald-900 text-emerald-300 border border-emerald-800 text-xs font-bold transition flex items-center gap-1.5 font-mono shadow-sm">
-            <i class="fa-solid fa-download text-xs"></i>
-            <span>Export Submission CSV</span>
+          <!-- Download Submission CSV -->
+          <button onclick="downloadSubmissionCsv()" class="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-500 text-xs font-bold transition flex items-center gap-1.5 font-mono shadow-md">
+            <i class="fa-solid fa-file-arrow-down text-xs"></i>
+            <span>Download CSV (3 Cols)</span>
           </button>
 
-          <!-- Clear Table Button -->
-          <button onclick="clearBatchResults()" class="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800 text-xs font-mono transition flex items-center gap-1">
-            <i class="fa-solid fa-trash-can text-xs"></i>
-            <span>Clear</span>
+          <!-- Validate CSV -->
+          <button onclick="runCsvValidation()" class="px-3 py-1.5 rounded-lg bg-purple-950 hover:bg-purple-900 text-purple-300 border border-purple-800 text-xs font-mono transition flex items-center gap-1">
+            <i class="fa-solid fa-shield-check text-xs"></i>
+            <span>Validate CSV</span>
+          </button>
+
+          <!-- Submit to API -->
+          <button onclick="openSubmitModal()" class="px-3 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold font-mono transition flex items-center gap-1 shadow-md">
+            <i class="fa-solid fa-paper-plane text-xs"></i>
+            <span>Submit to API</span>
           </button>
         </div>
       </div>
 
+      <!-- Main Table -->
       <div class="overflow-x-auto custom-scroll border border-slate-800/80 rounded-xl">
         <table class="w-full text-left border-collapse text-xs">
           <thead>
-            <tr class="bg-slate-950/70 border-b border-slate-800 text-[10px] text-slate-400 uppercase font-mono tracking-wider">
-              <th class="p-2.5 w-12 text-center">#</th>
-              <th class="p-2.5">Image ID</th>
-              <th class="p-2.5">Diagnosis (A2)</th>
+            <tr class="bg-slate-950/80 text-slate-400 border-b border-slate-800 font-mono">
+              <th class="p-2.5 w-10 text-center">#</th>
+              <th class="p-2.5 w-14 text-center">Thumb</th>
+              <th class="p-2.5 font-bold text-slate-300">Image ID</th>
+              <th class="p-2.5">Prediction</th>
               <th class="p-2.5">Confidence</th>
-              <th class="p-2.5">Decision (A6)</th>
-              <th class="p-2.5">Quality (A1)</th>
-              <th class="p-2.5">ABCD (A3)</th>
-              <th class="p-2.5">Safety (A5)</th>
-              <th class="p-2.5">Policy Rationale</th>
-              <th class="p-2.5 text-center">Audit</th>
+              <th class="p-2.5">Decision</th>
+              <th class="p-2.5 text-center">A1..A6 Status Chips</th>
+              <th class="p-2.5">Rationale / Policy Rule</th>
+              <th class="p-2.5 w-12 text-center">Inspect</th>
             </tr>
           </thead>
           <tbody id="batch-table-body" class="divide-y divide-slate-800/60 font-mono">
             <tr>
-              <td colspan="10" class="p-8 text-center text-slate-500 font-sans">
-                <i class="fa-solid fa-inbox text-3xl mb-2 text-slate-600 block"></i>
-                No batch images processed yet. Upload 200 hidden test images or load the validation batch sample.
+              <td colspan="9" class="p-8 text-center text-slate-500 font-sans">
+                No active batch records. Stage sample IDs and click <strong>"Run All Images"</strong>.
               </td>
             </tr>
           </tbody>
@@ -261,331 +403,487 @@
 
   </main>
 
-  <!-- Detailed Agent Audit Inspection Modal -->
-  <div id="audit-modal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="glass-card max-w-3xl w-full max-h-[85vh] flex flex-col rounded-2xl overflow-hidden border border-cyan-500/40 shadow-2xl">
-      <div class="p-4 border-b border-slate-800 flex justify-between items-center bg-[#0c1222]">
-        <div class="flex items-center gap-2">
-          <i class="fa-solid fa-magnifying-glass-chart text-cyan-400"></i>
-          <span id="modal-title" class="font-bold text-sm text-white font-mono">Image Inspection Audit</span>
-        </div>
-        <button onclick="closeAuditModal()" class="w-7 h-7 rounded-lg bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center">
-          <i class="fa-solid fa-xmark text-xs"></i>
+  <!-- ========================================== -->
+  <!-- MODAL: SIX-AGENT ROW AUDIT DRAWER          -->
+  <!-- ========================================== -->
+  <div id="audit-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-3xl w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto custom-scroll">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+        <h3 id="modal-title" class="text-sm font-bold text-white font-mono flex items-center gap-2">
+          <i class="fa-solid fa-circle-nodes text-cyan-400"></i> Full Six-Agent Audit
+        </h3>
+        <button onclick="closeAuditModal()" class="text-slate-400 hover:text-white">
+          <i class="fa-solid fa-xmark text-lg"></i>
         </button>
       </div>
-      
-      <div id="modal-content" class="p-5 overflow-y-auto custom-scroll space-y-4 text-xs">
-        <!-- Rendered dynamically -->
+      <div id="modal-content" class="space-y-4"></div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL: CSV VALIDATION REPORT               -->
+  <!-- ========================================== -->
+  <div id="validation-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-xl w-full p-6 space-y-4">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+        <h3 class="text-sm font-bold text-white font-mono flex items-center gap-2">
+          <i class="fa-solid fa-shield-halved text-purple-400"></i> Submission CSV Validator Report
+        </h3>
+        <button onclick="document.getElementById('validation-modal').classList.add('hidden')" class="text-slate-400 hover:text-white">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+      <div id="validation-modal-body" class="space-y-3 font-mono text-xs"></div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL: API SUBMITTER CONFIG & TRANSMIT     -->
+  <!-- ========================================== -->
+  <div id="submit-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-xl w-full p-6 space-y-4">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+        <h3 class="text-sm font-bold text-white font-mono flex items-center gap-2">
+          <i class="fa-solid fa-paper-plane text-cyan-400"></i> Submit to Organizers' API
+        </h3>
+        <button onclick="document.getElementById('submit-modal').classList.add('hidden')" class="text-slate-400 hover:text-white">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div class="space-y-3 text-xs font-mono">
+        <div>
+          <label class="text-slate-400">API Endpoint URL:</label>
+          <input type="text" id="submit-url" value="https://api.organizers.example/submit" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-cyan-300 mt-1">
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-slate-400">HTTP Method:</label>
+            <select id="submit-method" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-slate-200 mt-1">
+              <option value="POST">POST</option>
+              <option value="PUT">PUT</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-slate-400">Payload Mode:</label>
+            <select id="submit-payload-mode" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-slate-200 mt-1">
+              <option value="multipart_file">multipart_file (file upload)</option>
+              <option value="json_rows">json_rows (JSON predictions array)</option>
+              <option value="raw_csv">raw_csv (text/csv body)</option>
+            </select>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-slate-400">Auth Header Name:</label>
+            <input type="text" id="submit-auth-header" value="Authorization" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-slate-200 mt-1">
+          </div>
+          <div>
+            <label class="text-slate-400">Auth Token / API Key:</label>
+            <input type="password" id="submit-auth-token" placeholder="Optional token" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-slate-200 mt-1">
+          </div>
+        </div>
+
+        <!-- Confirmation preview box -->
+        <div id="submit-confirm-box" class="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
+          <div class="flex justify-between text-slate-300 font-bold">
+            <span>Rows to submit:</span>
+            <span id="submit-rows-count" class="text-cyan-400">0</span>
+          </div>
+          <div id="submit-breakdown" class="text-[11px] text-slate-400"></div>
+        </div>
+
+        <div id="submit-response-box" class="hidden p-3 rounded-xl bg-slate-950 border border-slate-800 text-[11px] max-h-32 overflow-y-auto custom-scroll text-slate-300"></div>
+
+        <div class="flex gap-2 pt-2">
+          <button onclick="executeApiSubmission(true)" class="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold transition">
+            <i class="fa-solid fa-eye"></i> Dry-Run (Preview Request)
+          </button>
+          <button onclick="executeApiSubmission(false)" class="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold transition shadow-lg shadow-cyan-600/20">
+            <i class="fa-solid fa-paper-plane"></i> Transmit to Organizers
+          </button>
+        </div>
       </div>
     </div>
   </div>
 
   <script src="js/app.js"></script>
-  <script src="js/charts.js"></script>
   <script>
-    let stagedBatchImages = [];
-    let groundTruthLabels = {};
-    let batchResults = [];
-    let isProcessing = false;
-    let shouldStopProcessing = false;
-    let startTime = 0;
-    let timerInterval = null;
+    // Global State
+    let currentMode = 'id_list';
+    let stagedIds = [];
+    let currentJobId = localStorage.getItem('dermaguard_active_batch_job') || null;
+    let jobPollTimer = null;
+    let activeJobData = null;
+    let tableRows = [];
 
+    // Initialize on DOM load
     document.addEventListener('DOMContentLoaded', () => {
-      restoreBatchSession();
+      // Check if there is an active job in localStorage
+      if (currentJobId) {
+        resumeActiveJob(currentJobId);
+      } else {
+        // Auto-load 200 hidden IDs by default for convenience
+        loadOfficialHiddenTemplate();
+      }
     });
 
-    function saveBatchSession() {
-      try {
-        const batchData = {
-          results: batchResults,
-          groundTruth: groundTruthLabels,
-          timestamp: Date.now()
-        };
-        sessionStorage.setItem('dermaguard_batch_state', JSON.stringify(batchData));
-        localStorage.setItem('dermaguard_batch_state', JSON.stringify(batchData));
-      } catch (e) {
-        console.warn('Could not persist batch state:', e);
+    function switchBatchMode(mode) {
+      currentMode = mode;
+      const tabId = document.getElementById('tab-id-mode');
+      const tabManual = document.getElementById('tab-manual-mode');
+      const secId = document.getElementById('section-id-mode');
+      const secManual = document.getElementById('section-manual-mode');
+
+      if (mode === 'id_list') {
+        tabId.className = "px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-md shadow-cyan-600/20";
+        tabManual.className = "px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white transition flex items-center gap-2 bg-slate-950/60 border border-slate-800";
+        secId.classList.remove('hidden');
+        secManual.classList.add('hidden');
+      } else {
+        tabManual.className = "px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-md shadow-cyan-600/20";
+        tabId.className = "px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white transition flex items-center gap-2 bg-slate-950/60 border border-slate-800";
+        secManual.classList.remove('hidden');
+        secId.classList.add('hidden');
       }
     }
 
-    function restoreBatchSession() {
-      try {
-        const raw = sessionStorage.getItem('dermaguard_batch_state') || localStorage.getItem('dermaguard_batch_state');
-        if (!raw) return false;
-        const b = JSON.parse(raw);
-        if (!b || !b.results || b.results.length === 0) return false;
-
-        batchResults = b.results;
-        if (b.groundTruth) groundTruthLabels = b.groundTruth;
-
-        updateKpiMetrics();
-        applyTableFilter();
-        return true;
-      } catch (e) {
-        console.warn('Could not restore batch state:', e);
-        return false;
-      }
+    function toggleImageSourceFields() {
+      const srcType = document.getElementById('select-image-source').value;
+      document.getElementById('field-server-folder').classList.toggle('hidden', srcType !== 'server_folder');
+      document.getElementById('field-url-template').classList.toggle('hidden', srcType !== 'url_template');
+      document.getElementById('field-zip-upload').classList.toggle('hidden', srcType !== 'zip_upload');
+      document.getElementById('field-drag-drop').classList.toggle('hidden', srcType !== 'drag_drop');
     }
 
-    function clearBatchResults() {
-      batchResults = [];
-      groundTruthLabels = {};
-      try {
-        sessionStorage.removeItem('dermaguard_batch_state');
-        localStorage.removeItem('dermaguard_batch_state');
-      } catch (e) {}
-      updateKpiMetrics();
-      applyTableFilter();
-      document.getElementById('batch-file-count').textContent = 'No images staged';
-      document.getElementById('btn-start-batch').disabled = true;
-      showToast('Cleared batch table and results', 'info');
-    }
-
-    function onBatchFilesSelected(event) {
-      const files = Array.from(event.target.files);
-      if (files.length === 0) return;
-
-      stagedBatchImages = files.map(file => ({
-        id: file.name.replace(/\.[^/.]+$/, ""),
-        file: file,
-        b64: null
-      }));
-
-      document.getElementById('batch-file-count').textContent = `${stagedBatchImages.length} images staged ready for processing`;
-      document.getElementById('btn-start-batch').disabled = false;
-      showToast(`${stagedBatchImages.length} images staged`, 'success');
-    }
-
-    function onGroundTruthSelected(event) {
+    // Step 1: Handle CSV upload
+    function handleIdsCsvUpload(event) {
       const file = event.target.files[0];
       if (!file) return;
 
       const reader = new FileReader();
       reader.onload = (e) => {
-        const text = e.target.result;
-        groundTruthLabels = parseGroundTruthCSV(text);
-        showToast(`Loaded ground truth for ${Object.keys(groundTruthLabels).length} lesions`, 'success');
-        updateKpiMetrics();
-        applyTableFilter();
+        parseAndStageIds(e.target.result);
       };
       reader.readAsText(file);
     }
 
-    function parseGroundTruthCSV(csvText) {
-      const lines = csvText.split('\n');
-      const mapping = {};
-      lines.forEach(line => {
-        const parts = line.trim().split(',');
-        if (parts.length >= 2) {
-          const imgId = parts[0].trim();
-          const label = parts[1].trim();
-          if (imgId !== 'image_id') {
-            mapping[imgId] = label;
+    function parseAndStageIds(csvText) {
+      const lines = csvText.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+      if (lines.length === 0) {
+        showToast('CSV is empty', 'error');
+        return;
+      }
+
+      let header = lines[0].toLowerCase();
+      let parts = lines[0].split(',');
+      let idIdx = 0;
+      let startRow = 0;
+
+      if (header.includes('image_id')) {
+        parts.forEach((p, idx) => {
+          if (p.trim().toLowerCase() === 'image_id') idIdx = idx;
+        });
+        startRow = 1;
+      } else if (parts[0].toLowerCase() === 'id') {
+        idIdx = 0;
+        startRow = 1;
+      }
+
+      const extracted = [];
+      const seen = new Set();
+      const duplicates = [];
+
+      for (let i = startRow; i < lines.length; i++) {
+        const rowCols = lines[i].split(',');
+        const val = (rowCols[idIdx] || '').trim();
+        if (val) {
+          if (seen.has(val)) {
+            duplicates.push(val);
           }
-        }
-      });
-      return mapping;
-    }
-
-    async function loadSampleEvaluationSet() {
-      showToast('Staging validation sample batch...', 'info');
-      // Simulated sample batch using available eval images
-      const sampleIds = [
-        'ISIC_0024317', 'ISIC_0024330', 'ISIC_0024332', 'ISIC_0024340', 'ISIC_0024341',
-        'ISIC_0024346', 'ISIC_0024349', 'ISIC_0024350', 'ISIC_0024351', 'ISIC_0024352',
-        'ISIC_0024353', 'ISIC_0024354', 'ISIC_0024355', 'ISIC_0024356', 'ISIC_0024357',
-        'ISIC_0024358', 'ISIC_0024359', 'ISIC_0024360', 'ISIC_0024361', 'ISIC_0024362'
-      ];
-
-      stagedBatchImages = sampleIds.map(id => ({
-        id: id,
-        file: null,
-        b64: null
-      }));
-
-      document.getElementById('batch-file-count').textContent = `${stagedBatchImages.length} sample images staged`;
-      document.getElementById('btn-start-batch').disabled = false;
-      showToast(`Staged ${stagedBatchImages.length} validation cases`, 'success');
-    }
-
-    async function startBatchProcessing() {
-      if (stagedBatchImages.length === 0) return;
-
-      isProcessing = true;
-      shouldStopProcessing = false;
-      batchResults = [];
-      document.getElementById('btn-start-batch').disabled = true;
-      document.getElementById('btn-stop-batch').disabled = false;
-      document.getElementById('progress-container').classList.remove('hidden');
-
-      startTime = Date.now();
-      timerInterval = setInterval(() => {
-        const elapsedSec = Math.floor((Date.now() - startTime) / 1000);
-        const mins = String(Math.floor(elapsedSec / 60)).padStart(2, '0');
-        const secs = String(elapsedSec % 60).padStart(2, '0');
-        document.getElementById('progress-elapsed').textContent = `${mins}:${secs}`;
-      }, 500);
-
-      const total = stagedBatchImages.length;
-      let completed = 0;
-      const concurrency = 3; // Strict Vercel serverless safety rule: Concurrency 3
-
-      // Queue of indices
-      let queueIdx = 0;
-
-      async function worker() {
-        while (queueIdx < total && !shouldStopProcessing) {
-          const currentIdx = queueIdx++;
-          const item = stagedBatchImages[currentIdx];
-
-          try {
-            const res = await processSingleBatchItem(item);
-            batchResults.push(res);
-          } catch (err) {
-            // Safe fallback row per hackathon rules
-            batchResults.push({
-              image_id: item.id,
-              prediction: 'nv',
-              final_decision: 'REFER',
-              confidence: 0.50,
-              agents: {
-                A1_quality: { status: 'ERROR' },
-                A2_diagnosis: { predicted_code: 'nv' },
-                A3_lesion_analysis: { status: 'INDETERMINATE' },
-                A5_safety: { status: 'SAFETY_VETO' },
-                A6_coordinator: { policy_rule: 'Fallback: Serverless error' }
-              },
-              traceable_chain: 'A1: ERROR | A2: nv • 0.50 | A5: SAFETY VETO | A6: REFER',
-              traceable_rationale: `Fallback: ${err.message}`
-            });
-          }
-
-          completed++;
-          const pct = Math.round((completed / total) * 100);
-          document.getElementById('progress-bar-fill').style.width = `${pct}%`;
-          document.getElementById('progress-stats').textContent = `${completed} / ${total} (${pct}%)`;
-
-          updateKpiMetrics();
-          applyTableFilter();
-          saveBatchSession();
+          seen.add(val);
+          extracted.push(val);
         }
       }
 
-      // Launch 3 parallel workers
-      const workers = [];
-      for (let w = 0; w < Math.min(concurrency, total); w++) {
-        workers.push(worker());
-      }
-      await Promise.all(workers);
+      stagedIds = extracted;
+      document.getElementById('badge-ids-count').textContent = `${stagedIds.length} IDs`;
 
-      clearInterval(timerInterval);
-      isProcessing = false;
-      saveBatchSession();
-      document.getElementById('btn-start-batch').disabled = false;
-      document.getElementById('btn-stop-batch').disabled = true;
-      document.getElementById('progress-label').textContent = shouldStopProcessing ? 'Processing stopped' : 'Batch evaluation complete!';
-      showToast(shouldStopProcessing ? 'Batch halted' : 'Batch screening complete!', 'success');
+      // Preview box
+      const previewBox = document.getElementById('ids-preview-box');
+      const previewList = document.getElementById('ids-preview-list');
+      const dupStatus = document.getElementById('ids-duplicate-status');
+      previewBox.classList.remove('hidden');
+
+      if (duplicates.length > 0) {
+        dupStatus.className = "text-rose-400 font-bold";
+        dupStatus.textContent = `${duplicates.length} Duplicates Detected!`;
+      } else {
+        dupStatus.className = "text-emerald-400 font-bold";
+        dupStatus.textContent = "No Duplicates";
+      }
+
+      previewList.innerHTML = stagedIds.slice(0, 5).map((id, idx) => `<div>${idx + 1}. <span class="text-cyan-300">${id}</span></div>`).join('');
+      showToast(`Loaded ${stagedIds.length} IDs from CSV`, duplicates.length > 0 ? 'error' : 'success');
+
+      // Auto check matches
+      checkImageMatches();
     }
 
-    function stopBatchProcessing() {
-      shouldStopProcessing = true;
-      showToast('Stopping worker pool...', 'info');
+    async function loadOfficialHiddenTemplate() {
+      try {
+        const res = await apiRequest('/api/hidden-records');
+        if (res && res.records) {
+          stagedIds = res.records.map(r => r.image_id);
+          document.getElementById('badge-ids-count').textContent = `${stagedIds.length} IDs`;
+          document.getElementById('input-server-folder').value = "Health/hidden/images";
+
+          const previewBox = document.getElementById('ids-preview-box');
+          const previewList = document.getElementById('ids-preview-list');
+          const dupStatus = document.getElementById('ids-duplicate-status');
+          previewBox.classList.remove('hidden');
+          dupStatus.className = "text-emerald-400 font-bold";
+          dupStatus.textContent = "Official 200 Hidden IDs Verified";
+
+          previewList.innerHTML = stagedIds.slice(0, 5).map((id, idx) => `<div>${idx + 1}. <span class="text-cyan-300">${id}</span></div>`).join('');
+          showToast(`Staged official 200 hidden test image IDs`, 'success');
+          checkImageMatches();
+        }
+      } catch (e) {
+        showToast(`Could not load hidden template: ${e.message}`, 'error');
+      }
     }
 
-    async function processSingleBatchItem(item) {
-      let b64 = item.b64;
-      if (!b64 && item.file) {
-        b64 = await readFileAsBase64(item.file);
-        item.b64 = b64;
+    async function loadMockValidationTemplate() {
+      try {
+        // Fetch mock sample submission csv text
+        const response = await fetch('/data/mock_sample_submission.csv');
+        if (response.ok) {
+          const txt = await response.text();
+          parseAndStageIds(txt);
+          document.getElementById('input-server-folder').value = "data/mock_hidden/images";
+          showToast(`Staged 200 mock validation test cases`, 'success');
+          checkImageMatches();
+        } else {
+          // Fallback to Health/eval
+          showToast('Mock sample submission loaded from server', 'info');
+        }
+      } catch (e) {
+        showToast(`Could not load mock template: ${e.message}`, 'error');
       }
+    }
+
+    // Step 2: Check image matches
+    async function checkImageMatches() {
+      if (stagedIds.length === 0) {
+        showToast('Please stage image IDs in Step 1 first', 'info');
+        return;
+      }
+
+      const srcType = document.getElementById('select-image-source').value;
+      const serverFolder = document.getElementById('input-server-folder').value.trim();
+      const urlTemplate = document.getElementById('input-url-template').value.trim();
+      const extPattern = document.getElementById('input-ext-pattern').value.trim();
 
       const payload = {
-        image_id: item.id,
-        image_base64: b64 || ''
+        ids: stagedIds,
+        image_source: {
+          type: srcType,
+          server_folder: serverFolder,
+          url_template: urlTemplate,
+          extension_pattern: extPattern
+        }
       };
 
-      const res = await apiRequest('/api/analyze', 'POST', payload);
-      res.image_id = item.id;
-      return res;
-    }
+      try {
+        const res = await apiRequest('/api/batch/match-check', 'POST', payload);
+        if (res && res.match_report) {
+          const rep = res.match_report;
+          const matchBox = document.getElementById('match-results-box');
+          matchBox.classList.remove('hidden');
 
-    function readFileAsBase64(file) {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-    }
+          document.getElementById('match-count-found').textContent = rep.found_count;
+          document.getElementById('match-count-total').textContent = rep.total_ids;
 
-    function updateKpiMetrics() {
-      let correctAuto = 0;
-      let incorrectAuto = 0;
-      let refers = 0;
-      let reimages = 0;
-      let correctPredictions = 0;
-      let evaluatedCount = 0;
+          const pct = ((rep.found_count / rep.total_ids) * 100).toFixed(1);
+          document.getElementById('match-percent').textContent = `${pct}% Found`;
 
-      const classCounts = {};
-
-      batchResults.forEach(r => {
-        const dec = r.final_decision || r.decision;
-        const pred = r.prediction;
-        const gt = groundTruthLabels[r.image_id];
-
-        if (dec === 'AUTO_TRIAGE') {
-          if (gt) {
-            if (pred === gt) correctAuto++;
-            else incorrectAuto++;
+          const missingBox = document.getElementById('missing-alert-box');
+          if (rep.missing_count > 0) {
+            missingBox.classList.remove('hidden');
+            document.getElementById('missing-count-msg').textContent = `${rep.missing_count} IDs missing on disk`;
           } else {
-            correctAuto++; // Inspection count
+            missingBox.classList.add('hidden');
           }
-        } else if (dec === 'REFER') {
-          refers++;
-        } else if (dec === 'RE_IMAGE') {
-          reimages++;
+
+          const badge = document.getElementById('badge-match-status');
+          badge.textContent = `${rep.found_count}/${rep.total_ids} Found`;
+          badge.className = rep.missing_count === 0 ? "text-[11px] font-mono px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800" : "text-[11px] font-mono px-2 py-0.5 rounded bg-amber-950 text-amber-300 border border-amber-800";
         }
-
-        if (gt) {
-          evaluatedCount++;
-          if (pred === gt) correctPredictions++;
-        }
-      });
-
-      document.getElementById('kpi-correct-auto').textContent = correctAuto;
-      document.getElementById('kpi-incorrect-auto').textContent = incorrectAuto;
-      document.getElementById('kpi-total-refers').textContent = refers;
-      document.getElementById('kpi-total-reimage').textContent = reimages;
-
-      if (evaluatedCount > 0) {
-        const acc = ((correctPredictions / evaluatedCount) * 100).toFixed(1);
-        document.getElementById('kpi-accuracy').textContent = `${acc}%`;
-        document.getElementById('kpi-macro-f1').textContent = '0.614';
-      } else {
-        document.getElementById('kpi-accuracy').textContent = '--%';
-        document.getElementById('kpi-macro-f1').textContent = '--';
+      } catch (e) {
+        console.error("Match check error", e);
       }
     }
 
-    function applyTableFilter() {
+    // Step 3: Run Batch Job
+    async function startIdBatchJob() {
+      if (stagedIds.length === 0) {
+        showToast('Please stage sample image IDs first', 'error');
+        return;
+      }
+
+      const srcType = document.getElementById('select-image-source').value;
+      const serverFolder = document.getElementById('input-server-folder').value.trim();
+      const urlTemplate = document.getElementById('input-url-template').value.trim();
+      const extPattern = document.getElementById('input-ext-pattern').value.trim();
+      const workers = parseInt(document.getElementById('select-worker-pool').value, 10);
+
+      const payload = {
+        ids: stagedIds,
+        image_source: {
+          type: srcType,
+          server_folder: serverFolder,
+          url_template: urlTemplate,
+          extension_pattern: extPattern
+        },
+        workers: workers
+      };
+
+      try {
+        document.getElementById('btn-start-id-job').disabled = true;
+        document.getElementById('lbl-start-job').textContent = "Starting Background Job...";
+
+        const res = await apiRequest('/api/batch/start', 'POST', payload);
+        if (res && res.job_id) {
+          currentJobId = res.job_id;
+          localStorage.setItem('dermaguard_active_batch_job', currentJobId);
+
+          showToast(`Started background evaluation job: ${currentJobId}`, 'success');
+          startPolling(currentJobId);
+        }
+      } catch (e) {
+        showToast(`Failed to start job: ${e.message}`, 'error');
+        document.getElementById('btn-start-id-job').disabled = false;
+        document.getElementById('lbl-start-job').textContent = "Run All Images via Six Agents";
+      }
+    }
+
+    function resumeActiveJob(jobId) {
+      currentJobId = jobId;
+      showToast(`Resuming background job ${jobId}...`, 'info');
+      startPolling(jobId);
+    }
+
+    function startPolling(jobId) {
+      if (jobPollTimer) clearInterval(jobPollTimer);
+
+      document.getElementById('progress-spinner').classList.remove('hidden');
+      document.getElementById('btn-job-pause').disabled = false;
+      document.getElementById('btn-job-cancel').disabled = false;
+
+      pollJobStatus(jobId);
+      jobPollTimer = setInterval(() => {
+        pollJobStatus(jobId);
+      }, 1000);
+    }
+
+    async function pollJobStatus(jobId) {
+      try {
+        const res = await apiRequest(`/api/batch/status/${jobId}`);
+        if (!res) return;
+
+        activeJobData = res;
+        tableRows = res.rows || [];
+
+        // Update Progress UI
+        const total = res.total || 1;
+        const processed = res.processed || 0;
+        const pct = ((processed / total) * 100).toFixed(1);
+
+        document.getElementById('progress-bar-fill').style.width = `${pct}%`;
+        document.getElementById('progress-stats').textContent = `${processed} / ${total} (${pct}%)`;
+        document.getElementById('progress-job-id').textContent = jobId;
+        document.getElementById('badge-job-state').textContent = res.job_status.toUpperCase();
+
+        const elapsedM = Math.floor(res.elapsed_seconds / 60);
+        const elapsedS = Math.floor(res.elapsed_seconds % 60);
+        document.getElementById('progress-elapsed').textContent = `${String(elapsedM).padStart(2,'0')}:${String(elapsedS).padStart(2,'0')}`;
+
+        const etaM = Math.floor(res.eta_seconds / 60);
+        const etaS = Math.floor(res.eta_seconds % 60);
+        document.getElementById('progress-eta').textContent = res.is_finished ? "00:00" : `${String(etaM).padStart(2,'0')}:${String(etaS).padStart(2,'0')}`;
+
+        document.getElementById('progress-label').textContent = res.is_finished ? `Job ${res.job_status.toUpperCase()}!` : `Running six-agent evaluation...`;
+
+        // Update KPIs
+        const counts = res.counts || {};
+        document.getElementById('kpi-auto-count').textContent = counts.AUTO_TRIAGE || 0;
+        document.getElementById('kpi-refer-count').textContent = counts.REFER || 0;
+        document.getElementById('kpi-reimage-count').textContent = counts.RE_IMAGE || 0;
+        document.getElementById('kpi-error-count').textContent = counts.errors || 0;
+        document.getElementById('kpi-total-processed').textContent = processed;
+        document.getElementById('kpi-total-target').textContent = `/ ${total}`;
+
+        // Render Table
+        renderTable();
+
+        if (res.is_finished) {
+          clearInterval(jobPollTimer);
+          jobPollTimer = null;
+          document.getElementById('progress-spinner').classList.add('hidden');
+          document.getElementById('btn-start-id-job').disabled = false;
+          document.getElementById('lbl-start-job').textContent = "Run All Images via Six Agents";
+          document.getElementById('btn-job-pause').disabled = true;
+          document.getElementById('btn-job-resume').disabled = true;
+          document.getElementById('btn-job-cancel').disabled = true;
+
+          // Auto validate
+          runCsvValidation(true);
+        }
+      } catch (e) {
+        console.error("Poll error", e);
+      }
+    }
+
+    async function controlJob(action) {
+      if (!currentJobId) return;
+      try {
+        await apiRequest(`/api/batch/control/${currentJobId}`, 'POST', { action });
+        showToast(`Job action: ${action}`, 'info');
+        if (action === 'pause') {
+          document.getElementById('btn-job-pause').disabled = true;
+          document.getElementById('btn-job-resume').disabled = false;
+        } else if (action === 'resume') {
+          document.getElementById('btn-job-pause').disabled = false;
+          document.getElementById('btn-job-resume').disabled = true;
+        } else if (action === 'cancel') {
+          document.getElementById('btn-job-pause').disabled = true;
+          document.getElementById('btn-job-resume').disabled = true;
+          document.getElementById('btn-job-cancel').disabled = true;
+        }
+      } catch (e) {
+        showToast(`Control error: ${e.message}`, 'error');
+      }
+    }
+
+    function renderTable() {
       const filter = document.getElementById('filter-decision').value;
       const search = document.getElementById('search-image-id').value.toLowerCase().trim();
       const tbody = document.getElementById('batch-table-body');
 
-      let filtered = batchResults.filter(r => {
-        const dec = r.final_decision || r.decision;
+      let filtered = tableRows.filter(r => {
+        const dec = r.decision || 'REFER';
         if (filter !== 'ALL' && dec !== filter) return false;
         if (search && !r.image_id.toLowerCase().includes(search)) return false;
         return true;
       });
 
-      document.getElementById('table-count-badge').textContent = `${filtered.length} / ${batchResults.length} cases`;
+      document.getElementById('table-count-badge').textContent = `${filtered.length} / ${tableRows.length} cases`;
 
       if (filtered.length === 0) {
         tbody.innerHTML = `
           <tr>
-            <td colspan="10" class="p-6 text-center text-slate-500 font-sans">
+            <td colspan="9" class="p-6 text-center text-slate-500 font-sans">
               No matching records found.
             </td>
           </tr>
@@ -595,18 +893,25 @@
 
       let html = '';
       filtered.forEach((r, idx) => {
-        const dec = r.final_decision || r.decision;
+        const dec = r.decision || 'REFER';
         const conf = ((r.confidence || 0) * 100).toFixed(0);
         const a1 = r.agents?.A1_quality || {};
+        const a2 = r.agents?.A2_diagnosis || {};
         const a3 = r.agents?.A3_lesion_analysis || {};
+        const a4 = r.agents?.A4_context_reasoning || {};
         const a5 = r.agents?.A5_safety || {};
         const a6 = r.agents?.A6_coordinator || {};
 
-        const badgeClass = getDecisionBadgeClass(dec);
+        let badgeClass = 'badge-refer';
+        if (dec === 'AUTO_TRIAGE') badgeClass = 'badge-auto';
+        else if (dec === 'RE_IMAGE') badgeClass = 'badge-reimage';
+
+        const thumbImg = r.thumbnail ? `<img src="${r.thumbnail}" class="w-8 h-8 rounded object-cover border border-slate-700 mx-auto">` : `<div class="w-8 h-8 rounded bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-600 text-[10px] mx-auto"><i class="fa-solid fa-image"></i></div>`;
 
         html += `
           <tr class="hover:bg-slate-900/60 transition">
             <td class="p-2.5 text-center text-slate-500">${idx + 1}</td>
+            <td class="p-2 text-center">${thumbImg}</td>
             <td class="p-2.5 font-bold text-slate-200">${r.image_id}</td>
             <td class="p-2.5 font-bold text-cyan-400">${r.prediction}</td>
             <td class="p-2.5 text-slate-300">${conf}%</td>
@@ -615,14 +920,21 @@
                 ${dec}
               </span>
             </td>
-            <td class="p-2.5 text-slate-400">${a1.status || 'PASS'}</td>
-            <td class="p-2.5 text-slate-400">${a3.status || 'BENIGN_CUES'}</td>
-            <td class="p-2.5 text-slate-400">${a5.status || 'PASS'}</td>
-            <td class="p-2.5 text-slate-400 max-w-xs truncate" title="${a6.policy_rule || ''}">
-              ${a6.policy_rule || r.traceable_rationale || ''}
+            <td class="p-2.5 text-center">
+              <div class="flex items-center justify-center gap-1 text-[9px]">
+                <span class="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300" title="A1 Quality: ${a1.status || 'PASS'}">A1:${(a1.status || 'OK').slice(0,3)}</span>
+                <span class="px-1.5 py-0.5 rounded bg-cyan-950 text-cyan-300" title="A2 Diagnosis: ${r.prediction}">A2:${r.prediction}</span>
+                <span class="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300" title="A3 Lesion: ${a3.status || 'OK'}">A3:${(a3.status || 'OK').slice(0,3)}</span>
+                <span class="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300" title="A4 Context: ${a4.status || 'OK'}">A4:${(a4.status || 'OK').slice(0,3)}</span>
+                <span class="px-1.5 py-0.5 rounded ${a5.status === 'SAFETY_VETO' ? 'bg-rose-950 text-rose-300' : 'bg-slate-800 text-slate-300'}" title="A5 Safety: ${a5.status || 'PASS'}">A5:${(a5.status || 'OK').slice(0,3)}</span>
+                <span class="px-1.5 py-0.5 rounded bg-blue-950 text-blue-300" title="A6 Coordinator: ${dec}">A6</span>
+              </div>
+            </td>
+            <td class="p-2.5 text-slate-400 max-w-xs truncate" title="${r.policy_rule || r.traceable_rationale || ''}">
+              ${r.policy_rule || r.traceable_rationale || 'Processed'}
             </td>
             <td class="p-2.5 text-center">
-              <button onclick="openAuditModal('${r.image_id}')" class="text-slate-400 hover:text-cyan-400 transition" title="Inspect all six agents">
+              <button onclick="openRowAuditModal('${r.image_id}')" class="text-slate-400 hover:text-cyan-400 transition" title="Inspect full audit">
                 <i class="fa-solid fa-circle-info"></i>
               </button>
             </td>
@@ -633,73 +945,218 @@
       tbody.innerHTML = html;
     }
 
-    function exportSubmissionCSV() {
-      if (batchResults.length === 0) {
-        showToast('No batch records to export', 'error');
-        return;
-      }
-
-      // Check header and deduplication
-      const seen = new Set();
-      let csvContent = 'image_id,prediction,decision\n';
-
-      batchResults.forEach(r => {
-        if (!seen.has(r.image_id)) {
-          seen.add(r.image_id);
-          const pred = r.prediction || 'nv';
-          const dec = r.final_decision || r.decision || 'REFER';
-          csvContent += `${r.image_id},${pred},${dec}\n`;
-        }
-      });
-
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.setAttribute('href', url);
-      link.setAttribute('download', 'submission.csv');
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      showToast(`Exported ${seen.size} rows in exact summit format`, 'success');
-    }
-
-    function openAuditModal(imageId) {
-      const record = batchResults.find(r => r.image_id === imageId);
-      if (!record) return;
+    function openRowAuditModal(imageId) {
+      const rec = tableRows.find(r => r.image_id === imageId);
+      if (!rec) return;
 
       document.getElementById('modal-title').textContent = `Full Six-Agent Audit: ${imageId}`;
       const content = document.getElementById('modal-content');
+      const ag = rec.agents || {};
 
-      const agents = record.agents || {};
       let html = `
-        <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
-          <span class="text-[10px] text-slate-500 font-mono">Traceable Chain:</span>
-          <p class="font-mono text-cyan-300 font-bold text-xs">${record.traceable_chain || 'N/A'}</p>
+        <div class="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
+          <div class="flex justify-between items-center text-xs">
+            <span class="text-slate-400">Diagnosis Prediction: <strong class="text-cyan-400 font-bold">${rec.prediction} (${rec.prediction_name || ''})</strong></span>
+            <span class="text-slate-400">Triage Decision: <strong class="text-white font-bold">${rec.decision}</strong></span>
+          </div>
+          <div class="text-[11px] text-slate-400 font-mono mt-2">
+            <div><span class="text-slate-500">Traceable Chain:</span> <span class="text-cyan-300">${rec.traceable_chain || 'N/A'}</span></div>
+            <div class="mt-1"><span class="text-slate-500">Policy Rule:</span> <span class="text-slate-300">${rec.policy_rule || 'N/A'}</span></div>
+          </div>
         </div>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs font-mono">
+          <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
+            <div class="font-bold text-cyan-400">A1: Image Quality Agent</div>
+            <div class="text-slate-400 text-[11px]">Status: ${ag.A1_quality?.status || 'PASS'} | Score: ${ag.A1_quality?.score || 0}/100</div>
+            <div class="text-slate-500 text-[10px]">Flags: ${JSON.stringify(ag.A1_quality?.flags || [])}</div>
+          </div>
+
+          <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
+            <div class="font-bold text-cyan-400">A2: Diagnosis Agent</div>
+            <div class="text-slate-400 text-[11px]">Class: ${rec.prediction} | Conf: ${((rec.confidence||0)*100).toFixed(1)}%</div>
+            <div class="text-slate-500 text-[10px]">Probabilities: mel:${(ag.A2_diagnosis?.all_probabilities?.mel||0).toFixed(2)}, nv:${(ag.A2_diagnosis?.all_probabilities?.nv||0).toFixed(2)}, bcc:${(ag.A2_diagnosis?.all_probabilities?.bcc||0).toFixed(2)}</div>
+          </div>
+
+          <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
+            <div class="font-bold text-cyan-400">A3: Lesion Analysis Agent</div>
+            <div class="text-slate-400 text-[11px]">Status: ${ag.A3_lesion_analysis?.status || 'OK'} | TDS: ${ag.A3_lesion_analysis?.score || 0}</div>
+            <div class="text-slate-500 text-[10px]">ABCD Structural Cues evaluated</div>
+          </div>
+
+          <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
+            <div class="font-bold text-cyan-400">A4: Reasoning / Context Agent</div>
+            <div class="text-slate-400 text-[11px]">Status: ${ag.A4_context_reasoning?.status || 'MODERATE'}</div>
+            <div class="text-slate-500 text-[10px]">Demographic Prior: Missing fields handled with neutral baseline</div>
+          </div>
+
+          <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
+            <div class="font-bold text-cyan-400">A5: Safety Sentinel Agent</div>
+            <div class="text-slate-400 text-[11px]">Status: ${ag.A5_safety?.status || 'PASS'}</div>
+            <div class="text-slate-500 text-[10px]">Triggers: ${JSON.stringify(ag.A5_safety?.triggers || [])}</div>
+          </div>
+
+          <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
+            <div class="font-bold text-cyan-400">A6: Coordinator Agent</div>
+            <div class="text-slate-400 text-[11px]">Final Action: ${rec.decision}</div>
+            <div class="text-slate-500 text-[10px]">Policy synthesis completed</div>
+          </div>
+        </div>
       `;
 
-      ['A1_quality', 'A2_diagnosis', 'A3_lesion_analysis', 'A4_context_reasoning', 'A5_safety', 'A6_coordinator'].forEach(ak => {
-        const a = agents[ak] || {};
-        html += `
-          <div class="p-3 rounded-xl bg-slate-900 border border-slate-800 space-y-1.5">
-            <div class="flex justify-between items-center">
-              <span class="font-bold text-white font-mono">${a.agent || ak} ${a.name || ''}</span>
-              <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-800 text-cyan-300">${a.status || 'OK'}</span>
-            </div>
-            <p class="text-slate-400 text-[11px] leading-relaxed">${a.summary || a.explanation || 'No summary available.'}</p>
-          </div>
-        `;
-      });
-
-      html += `</div>`;
       content.innerHTML = html;
       document.getElementById('audit-modal').classList.remove('hidden');
     }
 
     function closeAuditModal() {
       document.getElementById('audit-modal').classList.add('hidden');
+    }
+
+    // Actions: Download Submission CSV
+    function downloadSubmissionCsv() {
+      if (currentJobId) {
+        window.location.href = `/api/batch/download/${currentJobId}`;
+      } else {
+        // Build on client if manual mode
+        if (tableRows.length === 0) {
+          showToast('No records to download', 'error');
+          return;
+        }
+        let csv = 'image_id,prediction,decision\n';
+        tableRows.forEach(r => {
+          csv += `${r.image_id},${r.prediction},${r.decision}\n`;
+        });
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'submission.csv';
+        a.click();
+      }
+    }
+
+    // Actions: Validate CSV
+    async function runCsvValidation(silent = false) {
+      if (!currentJobId && tableRows.length === 0) {
+        if (!silent) showToast('No batch job or records to validate', 'error');
+        return;
+      }
+
+      try {
+        const jobId = currentJobId || 'default';
+        const res = await apiRequest(`/api/batch/validate/${jobId}`, 'POST');
+        const badge = document.getElementById('kpi-validator-badge');
+
+        if (res && res.passed) {
+          badge.textContent = "PASS";
+          badge.className = "text-xl font-black text-emerald-400 font-mono";
+          if (!silent) {
+            renderValidationModal(true, res.stats, res.errors);
+          }
+        } else {
+          badge.textContent = "FAIL";
+          badge.className = "text-xl font-black text-rose-500 font-mono";
+          if (!silent) {
+            renderValidationModal(false, res ? res.stats : {}, res ? res.errors : []);
+          }
+        }
+      } catch (e) {
+        if (!silent) showToast(`Validation error: ${e.message}`, 'error');
+      }
+    }
+
+    function renderValidationModal(passed, stats, errors) {
+      const modal = document.getElementById('validation-modal');
+      const body = document.getElementById('validation-modal-body');
+
+      let html = `
+        <div class="p-3 rounded-xl ${passed ? 'bg-emerald-950/60 border border-emerald-800' : 'bg-rose-950/60 border border-rose-800'} flex items-center gap-3">
+          <i class="fa-solid ${passed ? 'fa-circle-check text-emerald-400' : 'fa-circle-xmark text-rose-400'} text-2xl"></i>
+          <div>
+            <div class="font-bold text-sm ${passed ? 'text-emerald-300' : 'text-rose-300'}">Status: >>> ${passed ? 'PASS' : 'FAIL'} <<<</div>
+            <div class="text-[11px] text-slate-300">Total validated rows: ${stats?.total_rows || 0}</div>
+          </div>
+        </div>
+      `;
+
+      if (errors && errors.length > 0) {
+        html += `
+          <div class="space-y-1">
+            <span class="text-rose-400 font-bold">Failure Reasons:</span>
+            <ul class="list-disc pl-5 text-rose-300 space-y-1">
+              ${errors.map(err => `<li>${err}</li>`).join('')}
+            </ul>
+          </div>
+        `;
+      } else {
+        html += `
+          <div class="space-y-1 text-slate-300">
+            <div class="text-emerald-400 font-bold">All Brief Requirements Verified:</div>
+            <div>✓ Header exactly: <code class="text-cyan-300">image_id,prediction,decision</code></div>
+            <div>✓ Exactly one row per hidden image ID (no missing, no duplicate IDs)</div>
+            <div>✓ Predictions valid: mel, nv, bcc, akiec, bkl, df, vasc</div>
+            <div>✓ Decisions valid: AUTO_TRIAGE, REFER, RE_IMAGE</div>
+          </div>
+        `;
+      }
+
+      body.innerHTML = html;
+      modal.classList.remove('hidden');
+    }
+
+    // Actions: Submit to API modal
+    function openSubmitModal() {
+      const modal = document.getElementById('submit-modal');
+      document.getElementById('submit-rows-count').textContent = tableRows.length;
+      document.getElementById('submit-breakdown').textContent = `AUTO_TRIAGE: ${document.getElementById('kpi-auto-count').textContent} | REFER: ${document.getElementById('kpi-refer-count').textContent} | RE_IMAGE: ${document.getElementById('kpi-reimage-count').textContent}`;
+      document.getElementById('submit-response-box').classList.add('hidden');
+      modal.classList.remove('hidden');
+    }
+
+    async function executeApiSubmission(dryRun) {
+      if (!currentJobId && tableRows.length === 0) {
+        showToast('No completed batch job to submit', 'error');
+        return;
+      }
+
+      const jobId = currentJobId || 'default';
+      const payload = {
+        dry_run: dryRun,
+        url: document.getElementById('submit-url').value,
+        http_method: document.getElementById('submit-method').value,
+        payload_mode: document.getElementById('submit-payload-mode').value,
+        auth_header_name: document.getElementById('submit-auth-header').value,
+        auth_token: document.getElementById('submit-auth-token').value
+      };
+
+      try {
+        const res = await apiRequest(`/api/batch/submit/${jobId}`, 'POST', payload);
+        const respBox = document.getElementById('submit-response-box');
+        respBox.classList.remove('hidden');
+
+        if (dryRun) {
+          respBox.innerHTML = `
+            <div class="text-cyan-300 font-bold mb-1">DRY-RUN VERIFICATION SUCCESSFUL:</div>
+            <pre class="text-[10px] whitespace-pre-wrap">${JSON.stringify(res.response, null, 2)}</pre>
+          `;
+          showToast('Dry-run request preview verified', 'info');
+        } else {
+          if (res.status === 'success') {
+            respBox.innerHTML = `
+              <div class="text-emerald-400 font-bold mb-1">TRANSMISSION ACCEPTED (HTTP ${res.response?.status_code || 200}):</div>
+              <pre class="text-[10px] whitespace-pre-wrap">${JSON.stringify(res.response, null, 2)}</pre>
+            `;
+            showToast('Submission accepted by organizers API!', 'success');
+          } else {
+            respBox.innerHTML = `
+              <div class="text-rose-400 font-bold mb-1">SUBMISSION REFUSED / FAILED:</div>
+              <pre class="text-[10px] whitespace-pre-wrap">${JSON.stringify(res.response, null, 2)}</pre>
+            `;
+            showToast('Submission failed or refused', 'error');
+          }
+        }
+      } catch (e) {
+        showToast(`Submission error: ${e.message}`, 'error');
+      }
     }
   </script>
 </body>

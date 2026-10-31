@@ -198,3 +198,71 @@ python validate_submission.py --csv outputs/submission.csv --expected-count 200
 2. **Deterministic Fallbacks:** The orchestrator never silently fails on corrupted or unreadable images. Any exception triggers a deterministic fallback row: `prediction = 'nv'`, `decision = 'REFER'`, with error flags recorded in the audit trace.
 3. **Offline Explanations:** Explanations and clinical summaries are generated deterministically via templates and computed numeric features; no external LLM APIs are invoked during inference.
 4. **Vercel Serverless Limits:** Monolithic batch POSTs are completely avoided. The batch evaluation workflow uses browser-orchestrated queuing with concurrency 3, keeping each request payload lightweight and within execution timeouts.
+
+
+---
+
+## 🚀 Official Level 2 Hidden-Test Evaluation & Submission Guide
+
+### 1. Command-Line Interface (Priority 1)
+Run the finalized six-agent pipeline directly from the terminal without opening any browser:
+```bash
+python scripts/run_hidden.py \
+  --ids Health/hidden/records.csv \
+  --images Health/hidden/images \
+  --out outputs/submission.csv \
+  --workers 4 \
+  --resume
+```
+**Options:**
+- `--ids`: Path to sample submission CSV or ID list (auto-detects `image_id` column, rejects duplicates).
+- `--images`: Folder or `.zip` archive containing the images (matched by stem, case-insensitive, `.jpg`, `.jpeg`, `.png`, `.bmp`).
+- `--out`: Destination for final submission CSV (default `outputs/submission.csv`).
+- `--base-url`: Optional URL template (e.g. `https://host/images/{image_id}.jpg`) to automatically download missing images.
+- `--metadata`: Optional patient metadata CSV (`image_id,age,sex,localization`).
+- `--resume`: Resumes processing from `outputs/partial.jsonl`, skipping already evaluated IDs.
+- **Auto-Validation:** Automatically validates the resulting CSV at the end and exits with status 0 on PASS, 1 on FAIL.
+
+### 2. Validation Tool
+Validate any submission file against the sample IDs:
+```bash
+python scripts/validate_submission.py --csv outputs/submission.csv --ids Health/hidden/records.csv
+```
+Enforces:
+1. Header is exactly: `image_id,prediction,decision`
+2. Exactly one row per image ID, zero duplicates, zero missing IDs.
+3. Prediction in: `{mel, nv, bcc, akiec, bkl, df, vasc}`
+4. Decision in: `{AUTO_TRIAGE, REFER, RE_IMAGE}`
+5. Row order matches sample submission CSV exactly.
+
+### 3. Organizers' API Submitter (Priority 3)
+Configure `config/submit.json` or pass flags:
+```bash
+# 1. Dry run inspection (masked tokens, preview payload without sending):
+python scripts/submit.py --csv outputs/submission.csv --ids Health/hidden/records.csv --dry-run
+
+# 2. Live transmission:
+python scripts/submit.py --csv outputs/submission.csv --ids Health/hidden/records.csv
+```
+Supported payload modes: `multipart_file` (default), `json_rows`, and `raw_csv`. Responses are logged to `outputs/submit_response.json`.
+
+### 4. Mock Rehearsal & Testing (Priority 4)
+Generate 200 mock unlabelled images and run full clinical evaluation:
+```bash
+# 1. Generate 200 mock images and sample CSV
+python scripts/make_mock_hidden.py --count 200
+
+# 2. Run CLI on mock set
+python scripts/run_hidden.py --ids data/mock_sample_submission.csv --images data/mock_hidden/images --out outputs/submission.csv
+
+# 3. Evaluate clinical metrics against ground truth
+python scripts/make_mock_hidden.py --evaluate outputs/submission.csv
+
+# 4. Run full pytest suite
+pytest tests/test_hidden_pipeline.py -v
+```
+
+### 5. Assumptions Documented
+1. **Image ID Matching:** Image IDs in the sample CSV are matched by stem against image filenames (case-insensitive, trying extensions `.jpg`, `.jpeg`, `.png`, `.bmp`), and preserving the exact ID string format from the sample CSV.
+2. **Missing Demographic Context:** Hidden images lacking `age`, `sex`, or `localization` operate in no-context mode: Agent 4 (Reasoning / Context) assigns a demographic baseline score (0.50) with flags and neutral risk, ensuring unpenalized triage.
+3. **Deterministic Fallbacks:** If an image is missing or corrupted, the system writes `prediction = "nv", decision = "REFER"`, logs the error in `outputs/errors.csv`, and continues without crashing.

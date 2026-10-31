@@ -76,6 +76,35 @@ except Exception as _e_orch:
     agentic_dermaguard = None
     AgenticDermaGuard = None
 
+# Import batch service
+try:
+    from api.batch_service import (
+        start_batch_job,
+        get_job,
+        control_batch_job,
+        check_image_matches,
+        get_submission_csv_content,
+        list_jobs
+    )
+except Exception:
+    try:
+        from batch_service import (
+            start_batch_job,
+            get_job,
+            control_batch_job,
+            check_image_matches,
+            get_submission_csv_content,
+            list_jobs
+        )
+    except Exception as _e_batch:
+        print(f"[Warning] Failed to import batch_service: {_e_batch}")
+        def start_batch_job(*args, **kwargs): return "mock_job"
+        def get_job(jid): return None
+        def control_batch_job(jid, act): return False
+        def check_image_matches(ids, src): return {}
+        def get_submission_csv_content(jid): return None
+        def list_jobs(): return []
+
 class handler(BaseHTTPRequestHandler):
     def _send_cors_headers(self):
         self.send_header("Access-Control-Allow-Origin", "*")
@@ -168,6 +197,63 @@ class handler(BaseHTTPRequestHandler):
                 self.wfile.write(json.dumps({"error": f"File not found: {primary_path}"}).encode("utf-8"))
                 return
 
+        # --- Batch Endpoints ---
+        if "/api/batch/download/" in primary_path:
+            job_id = primary_path.split("/api/batch/download/")[1].split("/")[0].split("?")[0]
+            csv_text = get_submission_csv_content(job_id)
+            if csv_text is not None:
+                self.send_response(200)
+                self.send_header("Content-Type", "text/csv")
+                self.send_header("Content-Disposition", 'attachment; filename="submission.csv"')
+                self._send_cors_headers()
+                self.end_headers()
+                self.wfile.write(csv_text.encode("utf-8"))
+            else:
+                self.send_response(404)
+                self.send_header("Content-Type", "application/json")
+                self._send_cors_headers()
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": f"Job {job_id} not found"}).encode("utf-8"))
+            return
+
+        if "/api/batch/status/" in primary_path:
+            job_id = primary_path.split("/api/batch/status/")[1].split("/")[0].split("?")[0]
+            job = get_job(job_id)
+            if job:
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self._send_cors_headers()
+                self.end_headers()
+                resp_payload = {
+                    "status": "success",
+                    "job_id": job["job_id"],
+                    "job_status": job["status"],
+                    "total": job["total"],
+                    "processed": job["processed"],
+                    "elapsed_seconds": job["elapsed_seconds"],
+                    "eta_seconds": job["eta_seconds"],
+                    "counts": job["counts"],
+                    "rows": job["rows"],
+                    "is_finished": job["status"] in ["completed", "cancelled"]
+                }
+                self.wfile.write(json.dumps(resp_payload).encode("utf-8"))
+            else:
+                self.send_response(404)
+                self.send_header("Content-Type", "application/json")
+                self._send_cors_headers()
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": f"Job {job_id} not found"}).encode("utf-8"))
+            return
+
+        if primary_path == "/api/batch/jobs":
+            jobs = list_jobs()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self._send_cors_headers()
+            self.end_headers()
+            self.wfile.write(json.dumps({"status": "success", "jobs": jobs}).encode("utf-8"))
+            return
+
         # 1. Download sample submission CSV
         if "download" in corpus or "submission-sample" in corpus:
             if os.path.exists(SAMPLE_CSV_FILE):
@@ -244,6 +330,61 @@ class handler(BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
 
+        # 5. Hidden 200 Test Records & Metadata (Official Level 2 Release)
+        elif "hidden-records" in corpus or "hidden_records" in corpus:
+            try:
+                records = self._get_hidden_records()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self._send_cors_headers()
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "success", "count": len(records), "records": records}).encode("utf-8"))
+            except Exception as e:
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json")
+                self._send_cors_headers()
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+
+        # 6. Hidden 200 Pre-Computed Six-Agent Audit Trace
+        elif "hidden-audit" in corpus or "hidden_audit" in corpus:
+            try:
+                audit_file = os.path.join(WORKSPACE_ROOT, "outputs", "hidden_200_audit.json")
+                if os.path.exists(audit_file):
+                    with open(audit_file, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                else:
+                    data = {"error": "Audit trace not yet generated. Run run_hidden_batch.py first."}
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self._send_cors_headers()
+                self.end_headers()
+                self.wfile.write(json.dumps(data).encode("utf-8"))
+            except Exception as e:
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json")
+                self._send_cors_headers()
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+
+        # 7. Download Official health_submission.csv
+        elif "health-submission" in corpus:
+            csv_path = os.path.join(WORKSPACE_ROOT, "outputs", "health_submission.csv")
+            if os.path.exists(csv_path):
+                self.send_response(200)
+                self.send_header("Content-Type", "text/csv")
+                self.send_header("Content-Disposition", 'attachment; filename="health_submission.csv"')
+                self._send_cors_headers()
+                self.end_headers()
+                with open(csv_path, "rb") as f:
+                    self.wfile.write(f.read())
+            else:
+                self.send_response(404)
+                self.send_header("Content-Type", "application/json")
+                self._send_cors_headers()
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": "health_submission.csv not found"}).encode("utf-8"))
+
         # Default info
         else:
             self.send_response(200)
@@ -303,6 +444,96 @@ class handler(BaseHTTPRequestHandler):
             body = json.loads(post_data.decode("utf-8"))
         except Exception:
             body = {}
+
+        # --- Batch Endpoints ---
+        if "/api/batch/start" in primary_path:
+            ids = body.get("ids", [])
+            image_source = body.get("image_source", {})
+            metadata = body.get("metadata", {})
+            workers = int(body.get("workers", 3))
+            job_id = start_batch_job(ids, image_source, metadata=metadata, workers=workers)
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self._send_cors_headers()
+            self.end_headers()
+            self.wfile.write(json.dumps({
+                "status": "started",
+                "job_id": job_id,
+                "total": len(ids)
+            }).encode("utf-8"))
+            return
+
+        if "/api/batch/control" in primary_path:
+            job_id = primary_path.split("/api/batch/control/")[1].split("/")[0].split("?")[0] if "/control/" in primary_path else body.get("job_id")
+            action = body.get("action", "pause")
+            ok = control_batch_job(job_id, action)
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self._send_cors_headers()
+            self.end_headers()
+            self.wfile.write(json.dumps({"status": "success" if ok else "error", "job_id": job_id, "action": action}).encode("utf-8"))
+            return
+
+        if "/api/batch/match-check" in primary_path:
+            ids = body.get("ids", [])
+            image_source = body.get("image_source", {})
+            report = check_image_matches(ids, image_source)
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self._send_cors_headers()
+            self.end_headers()
+            self.wfile.write(json.dumps({"status": "success", "match_report": report}).encode("utf-8"))
+            return
+
+        if "/api/batch/validate" in primary_path:
+            job_id = primary_path.split("/api/batch/validate/")[1].split("/")[0].split("?")[0] if "/validate/" in primary_path else body.get("job_id")
+            job = get_job(job_id)
+            if job:
+                from scripts.validate_submission import validate_submission
+                passed, errs, stats = validate_submission(job["submission_csv"], ids_path=None)
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self._send_cors_headers()
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    "status": "success",
+                    "job_id": job_id,
+                    "passed": passed,
+                    "errors": errs,
+                    "stats": stats
+                }).encode("utf-8"))
+            else:
+                self.send_response(404)
+                self.send_header("Content-Type", "application/json")
+                self._send_cors_headers()
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": f"Job {job_id} not found"}).encode("utf-8"))
+            return
+
+        if "/api/batch/submit" in primary_path:
+            job_id = primary_path.split("/api/batch/submit/")[1].split("/")[0].split("?")[0] if "/submit/" in primary_path else body.get("job_id")
+            job = get_job(job_id)
+            if job:
+                from scripts.submit import execute_submission
+                dry_run = bool(body.get("dry_run", False))
+                passed, resp_data = execute_submission(job["submission_csv"], dry_run=dry_run, yes=True)
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self._send_cors_headers()
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    "status": "success" if passed else "error",
+                    "job_id": job_id,
+                    "passed": passed,
+                    "response": resp_data
+                }).encode("utf-8"))
+            else:
+                self.send_response(404)
+                self.send_header("Content-Type", "application/json")
+                self._send_cors_headers()
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": f"Job {job_id} not found"}).encode("utf-8"))
+            return
 
         # 1. Reset Thresholds Endpoint
         if "reset" in corpus:
@@ -379,6 +610,10 @@ class handler(BaseHTTPRequestHandler):
             # 2. Or resolve from local path / image_id
             elif image_id:
                 candidates = [
+                    os.path.join(WORKSPACE_ROOT, "Health", "hidden", "images", f"{image_id}.jpg"),
+                    os.path.join(WORKSPACE_ROOT, "Health", "hidden", "images", image_id),
+                    r"C:\Users\Tanuj kumar singh\Desktop\image batch\Health\hidden\images" + f"\\{image_id}.jpg",
+                    r"C:\Users\Tanuj kumar singh\Desktop\image batch\Health\hidden\images" + f"\\{image_id}",
                     os.path.join(WORKSPACE_ROOT, "Health", "eval", "images", f"{image_id}.jpg"),
                     os.path.join(WORKSPACE_ROOT, "Health", "eval", "images", image_id),
                     os.path.join(WORKSPACE_ROOT, "Health", "training", "images", f"{image_id}.jpg"),
@@ -414,7 +649,12 @@ class handler(BaseHTTPRequestHandler):
                 )
             else:
                 raise RuntimeError("Six-Agent Orchestrator module could not be initialized")
-            res["image_id"] = img_desc.replace(".jpg", "")
+            
+            res["image_id"] = image_id or img_desc.replace(".jpg", "")
+            raw_dec = res.get("decision", "REFER")
+            res["decision"] = raw_dec
+            res["decision_hyphenated"] = raw_dec.replace("_", "-")
+            res["predicted_label"] = res.get("prediction", "nv")
 
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
@@ -622,6 +862,29 @@ class handler(BaseHTTPRequestHandler):
                 s["image_b64"] = ""
 
         return samples_info
+
+    def _get_hidden_records(self) -> List[Dict[str, Any]]:
+        candidates = [
+            os.path.join(WORKSPACE_ROOT, "Health", "hidden", "records.csv"),
+            r"C:\Users\Tanuj kumar singh\Desktop\image batch\Health\hidden\records.csv"
+        ]
+        records = []
+        for csv_path in candidates:
+            if os.path.exists(csv_path):
+                try:
+                    import pandas as pd
+                    df = pd.read_csv(csv_path)
+                    for _, row in df.iterrows():
+                        records.append({
+                            "image_id": str(row["image_id"]).strip(),
+                            "age": float(row["age"]) if pd.notnull(row.get("age")) else None,
+                            "sex": str(row["sex"]).strip() if pd.notnull(row.get("sex")) else None,
+                            "localization": str(row["localization"]).strip() if pd.notnull(row.get("localization")) else None
+                        })
+                    return records
+                except Exception as ex:
+                    print(f"Error reading {csv_path}: {ex}")
+        return records
 
 if __name__ == "__main__":
     from http.server import HTTPServer

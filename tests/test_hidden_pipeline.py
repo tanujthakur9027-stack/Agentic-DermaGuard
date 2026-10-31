@@ -183,3 +183,66 @@ def test_acceptance_check_2_three_missing_images(tmp_path):
     assert os.path.exists(str(err_path))
     err_df = pd.read_csv(str(err_path))
     assert len(err_df) >= 3
+
+def test_api_batch_lifecycle(tmp_path):
+    """Verifies Priority 2 and Priority 3 server-side batch endpoints."""
+    from api.batch_service import start_batch_job, get_job, control_batch_job, get_submission_csv_content, check_image_matches
+    
+    # 1. Create a tiny mock set of 3 images
+    img_dir = tmp_path / "mock_imgs"
+    img_dir.mkdir()
+    img = Image.new("RGB", (64, 64), color=(200, 150, 120))
+    img.save(str(img_dir / "IMG_A.jpg"))
+    img.save(str(img_dir / "IMG_B.jpg"))
+    # IMG_C is missing
+
+    test_ids = ["IMG_A", "IMG_B", "IMG_C"]
+
+    # Match check
+    match_rep = check_image_matches(test_ids, {"type": "server_folder", "server_folder": str(img_dir)})
+    assert match_rep["total_ids"] == 3
+    assert match_rep["found_count"] == 2
+    assert match_rep["missing_count"] == 1
+    assert "IMG_C" in match_rep["missing_ids"]
+
+    # Start job
+    job_id = start_batch_job(test_ids, {"type": "server_folder", "server_folder": str(img_dir)}, workers=1)
+    assert job_id is not None
+
+    # Wait for completion
+    import time
+    for _ in range(30):
+        job = get_job(job_id)
+        if job and job["status"] == "completed":
+            break
+        time.sleep(0.5)
+
+    job = get_job(job_id)
+    assert job["status"] == "completed"
+    assert job["processed"] == 3
+    assert len(job["rows"]) == 3
+
+    # Check order preservation in rows
+    assert [r["image_id"] for r in job["rows"]] == test_ids
+
+    # Download CSV content check
+    csv_text = get_submission_csv_content(job_id)
+    assert csv_text is not None
+    lines = csv_text.strip().split("\n")
+    assert lines[0] == "image_id,prediction,decision"
+    assert len(lines) == 4 # header + 3 rows
+    assert lines[1].startswith("IMG_A,")
+    assert lines[2].startswith("IMG_B,")
+    assert lines[3].startswith("IMG_C,nv,REFER") # Missing image gets fallback
+
+    # Validation check
+    from scripts.validate_submission import validate_submission
+    passed, errs, stats = validate_submission(job["submission_csv"])
+    assert passed is True
+    assert stats["total_rows"] == 3
+
+    # Submit dry-run check
+    from scripts.submit import execute_submission
+    ok, dry_resp = execute_submission(job["submission_csv"], dry_run=True, yes=True)
+    assert ok is True
+    assert dry_resp.get("dry_run") is True
